@@ -40,9 +40,61 @@ function interpret() {
 //      CONSTRAINT SOLVING
 //
 //
+
+// thetas!
+class Substitution {
+
+    static idsubst = new Substitution({});
+
+    /**
+     * mapsTo : creates a substitution with the type variable name and type
+     * @param {String} name : type variable name
+     * @param {Type} tau : type
+     * @returns {Substitution}
+     */
+    static mapsTo(name, tau) {
+        let map = {};
+        map[name] = tau;
+        return new Substitution(map);
+    }
+
+    /**
+     * compose : Combine both substitutions
+     * @param {Subtitution} theta1 
+     * @param {Substitution} theta2 
+     */
+    static compose(theta1, theta2) {
+        let keys = theta2.keys();
+        for (let key in keys) {
+            theta1[key] = theta2[key];
+        }
+        return theta1;
+    }
+    /**
+     * 
+     * @param {Map<String, Type>} mapping
+     */
+    constructor(mapping) {
+        this.mapping = mapping;
+    }
+}
 // abstract class
 class Constraint {
-    static trivial = "T"
+
+    solve() {}
+    toString() {}
+
+}
+
+class Trivial extends Constraint {
+
+    solve() {
+        return ;
+    }
+
+    toString() {
+        return "T";
+    }
 }
 
 class And extends Constraint {
@@ -61,6 +113,10 @@ class And extends Constraint {
     toString() {
         return this.c1.toString() + " /\\ " + this.c2.toString();
     }
+
+    solve() {
+
+    }
 }
 
 class Equal extends Constraint {
@@ -78,6 +134,10 @@ class Equal extends Constraint {
 
     toString() {
         return this.tau1.typeString + " ~ " + this.tau2.typeString;
+    }
+
+    solve() {
+
     }
 }
 
@@ -225,7 +285,7 @@ class Literal extends Expression {
     // private constructor, not meant to be instantiated
     constructor() {
         super();
-        this.constraint = Constraint.trivial;
+        this.constraint = new Trivial();;
     }
 
     static makeLiteral(val) {
