@@ -44,6 +44,34 @@ class Constraint {
     static trivial = "T"
 }
 
+class And extends Constraint {
+
+    /**
+     * /\ constraint 
+     * @param {Constraint} c1 
+     * @param {Constraint} c2 
+     */
+    constructor(c1, c2) {
+        super();
+        this.c1 = c1;
+        this.c2 = c2;
+    }
+}
+
+class Equal extends Constraint {
+
+    /**
+     * ~ constraint 
+     * @param {Constraint} c1 
+     * @param {Constraint} c2 
+     */
+    constructor(c1, c2) {
+        super();
+        this.c1 = c1;
+        this.c2 = c2;
+    }
+}
+
 /**
  * 
  * 
@@ -55,6 +83,10 @@ class Type {
     typeString;
     constructor(name) {
         this.typeString = name;
+    }
+
+    static listtype(tau) {
+        return new Conapp(new Tycon("list"), [tau]);
     }
 }
 
@@ -192,7 +224,7 @@ class Literal extends Expression {
             return BoolV(val);
         }
         else if (val[0] == "'(") {
-            
+
         }
         return Num(val);
     }
@@ -235,47 +267,41 @@ class Nil extends Literal {
 
     constructor() {
         super();
-        this.value = "'()";
+        this.value = "()";
+        this.list = [];
         let tyvar = new Tyvar();
-        this.type = new Forall([tyvar], new Conapp(new Tycon("list"), [tyvar]))
+        this.type = new Forall([tyvar], Type.listtype(tyvar))
     }
      
 }
 
-let l = new Sym("'asdasda")
-console.log(l.value + " : " + l.type.typeString);
-
-let i = new Num("90")
-console.log(i.value + " : " + i.type.typeString)
-
-let nil = new Nil();
-console.log(nil.value + " : " + nil.type.typeString);
-
-let nil2 = new Nil();
-console.log(nil2.value + " : " + nil2.type.typeString);
-
-
-
 /** FOR LISTS */
-// class Pair extends Literal {
-
-//     val1;
-//     val2;
-//     get type() {
-
-//     }
-
-//     eval() {
-
-//     }
-//     /**
-//      * 
-//      * @param {Literal} val1 
-//      * @param {Literal} val2 
-//      */
-//     constructor(val1, val2) {
-//         this.val1 = val1;
-//         this.val2 = val2;
-//     }
+class Pair extends Literal {
+  
+    eval() {
+        let fstPackage = val1.eval();
+        let sndPackage = val2.eval();
+        let bigConstraint = new And(new Equal(Type.listtype(fstPackage.tau), sndPackage.tau), new And(fstPackage.constraint, sndPackage.constraint))
+        return new ExpEvalBundle(this.value,  sndPackage.tau, bigConstraint);
+    }
+    /**
+     * 
+     * @param {Literal} val1 : expected to be type of element in list
+     * @param {Pair} val2 : expected to be a listtype
+     */
+    constructor(val1, val2) {
+        super();
+        this.val1 = val1;
+        this.val2 = val2;
+        this.list = [val1].concat(val2.list);
+        let str = "(";
+        for (let i = 0; i < this.list.length; i++) {
+            str += this.list[i].value + " ";
+        }
+        str = str.slice(0, -1);
+        str += ")";
+        this.value = str;
+        this.eval();
+    }
    
-// }
+}
