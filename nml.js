@@ -63,13 +63,13 @@ class Substitution {
      * @param {Subtitution} theta1 
      * @param {Substitution} theta2 
      */
-    static compose(theta1, theta2) {
+    compose(theta2) {
         let keys = theta2.keys();
         for (let key in keys) {
-            theta1[key] = theta2[key];
+            this.mapping[key] = theta2[key];
         }
-        return theta1;
     }
+
     /**
      * 
      * @param {Map<String, Type>} mapping
@@ -78,23 +78,40 @@ class Substitution {
         this.mapping = mapping;
     }
 }
+
 // abstract class
 class Constraint {
 
+    /**
+     * @returns {Substitution}
+     */
     solve() {}
+
+    /**
+     * Turns constraint into string, readable format
+     * @returns {String}
+     */
     toString() {}
+
+     /**
+     * Substitutes a substitution into the constraint
+     * @param {Substitution} sub 
+     */
+    consubst(sub) { }
 
 }
 
 class Trivial extends Constraint {
 
     solve() {
-        return ;
+        return Substitution.idsubst;
     }
 
     toString() {
         return "T";
     }
+
+    consubst(sub) { }
 }
 
 class And extends Constraint {
@@ -115,7 +132,14 @@ class And extends Constraint {
     }
 
     solve() {
+        let theta1 = c1.solve();
+        let theta2 = c2.solve();
+        return theta2.compose(theta1);
+    }
 
+    consubst(sub) { 
+        this.c1.consubst(sub)
+        this.c2.consubst(sub)
     }
 }
 
