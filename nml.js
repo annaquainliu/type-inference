@@ -174,13 +174,12 @@ class Tycon extends Type {
     static boolty = Tycon("bool")
     static intty = Tycon("int")
     static symty = Tycon("sym")
+    static unitty = Tycon("unit")
 
     constructor(name) {
         super(name);
     }
 }
-
-
 
 class Tyvar extends Type {
     static tCounter = -1;
@@ -214,6 +213,44 @@ class Conapp extends Type {
 
 }
 
+class Forall extends Type {
+
+
+    /**
+     * Forall datatype constructor
+     * @param {Array<Tyvar>} tyvars 
+     * @param {Type} tau 
+     */
+    constructor(tyvars, tau) {
+        this.tyvars = tyvars;
+        this.tau = tau;
+        str = "(forall [";
+        for (let i = 0; i < tyvars.length; i++) {
+            str += tyvars[i].typeString + " ";
+        }
+        str = str.slice(0, -1);
+        str += "] " + tau.typeString;
+    }
+}
+
+class Funty extends Type {
+
+    /**
+     * 
+     * @param {Array<Type>} taus : Parameter types
+     * @param {Type} tau : Return type
+     */
+    constructor(taus, tau) {
+        this.taus = taus;
+        this.tau = tau;
+        str = "("
+        for (let i = 0; i < taus.length; i++) {
+            str += taus[i].typeString + " ";
+        }
+        str += "-> " + tau + ")";
+    }
+}
+
 ///////////////////////////
 //
 //      CONSTRAINT SOLVING
@@ -221,5 +258,4 @@ class Conapp extends Type {
 //
 class Constraint {
     static trivial = "T"
-
 }
