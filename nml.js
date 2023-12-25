@@ -40,6 +40,7 @@ function interpret() {
 //      CONSTRAINT SOLVING
 //
 //
+// abstract class
 class Constraint {
     static trivial = "T"
 }
@@ -56,19 +57,27 @@ class And extends Constraint {
         this.c1 = c1;
         this.c2 = c2;
     }
+
+    toString() {
+        return this.c1.toString() + " /\\ " + this.c2.toString();
+    }
 }
 
 class Equal extends Constraint {
 
     /**
      * ~ constraint 
-     * @param {Constraint} c1 
-     * @param {Constraint} c2 
+     * @param {Type} tau1
+     * @param {Type} tau2 
      */
-    constructor(c1, c2) {
+    constructor(tau1, tau2) {
         super();
-        this.c1 = c1;
-        this.c2 = c2;
+        this.tau1 = tau1;
+        this.tau2 = tau2;
+    }
+
+    toString() {
+        return this.tau1.typeString + " ~ " + this.tau2.typeString;
     }
 }
 
@@ -231,7 +240,7 @@ class Literal extends Expression {
 
     // inherited methods for all subclasses
     eval() {
-        return new ExpEvalBundle(value, type, constraint);
+        return new ExpEvalBundle(this.value, this.type, this.constraint);
     }
 }
 
@@ -277,12 +286,13 @@ class Nil extends Literal {
 
 /** FOR LISTS */
 class Pair extends Literal {
-  
+    
+
     eval() {
-        let fstPackage = val1.eval();
-        let sndPackage = val2.eval();
+        let fstPackage = this.val1.eval();
+        let sndPackage = this.val2.eval();
         let bigConstraint = new And(new Equal(Type.listtype(fstPackage.tau), sndPackage.tau), new And(fstPackage.constraint, sndPackage.constraint))
-        return new ExpEvalBundle(this.value,  sndPackage.tau, bigConstraint);
+        return new ExpEvalBundle(this.value, sndPackage.tau, bigConstraint);
     }
     /**
      * 
@@ -301,7 +311,7 @@ class Pair extends Literal {
         str = str.slice(0, -1);
         str += ")";
         this.value = str;
-        this.eval();
+        this.type = val2.type; // dummy type 
     }
    
 }
