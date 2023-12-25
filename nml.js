@@ -35,6 +35,114 @@ function interpret() {
 
 }
 
+///////////////////////////
+//
+//      CONSTRAINT SOLVING
+//
+//
+class Constraint {
+    static trivial = "T"
+}
+
+/**
+ * 
+ * 
+ *  TYPES
+ * 
+ */
+// type interface
+class Type {
+    typeString;
+    constructor(name) {
+        this.typeString = name;
+    }
+}
+
+class Tycon extends Type {
+    
+    static boolty = new Tycon("bool")
+    static intty = new Tycon("int")
+    static symty = new Tycon("sym")
+    static unitty = new Tycon("unit")
+
+    constructor(name) {
+        super(name);
+    }
+}
+
+class Tyvar extends Type {
+    static tCounter = -1;
+
+    constructor() {
+        Tyvar.tCounter++;
+        super("'t" + Tyvar.tCounter);
+    }
+
+    static reset() {
+        tCounter = 0;
+    }
+}
+
+class Conapp extends Type {
+
+    /**
+     * 
+     * @param {Tycon} tycon 
+     * @param {Array<Type>} types 
+     */
+    constructor (tycon, types) {
+        let str = "(" + tycon.typeString;
+        for (let i = 0; i < types.length; i++) {
+            str += " " + types[i].typeString;
+        }
+        str += ")";
+        super(str);
+        this.tycon = tycon;
+        this.types = types;
+    }
+
+}
+
+class Forall extends Type {
+
+
+    /**
+     * Forall datatype constructor
+     * @param {Array<Tyvar>} tyvars 
+     * @param {Type} tau 
+     */
+    constructor(tyvars, tau) {
+        let str = "(forall [";
+        for (let i = 0; i < tyvars.length; i++) {
+            str += tyvars[i].typeString + " ";
+        }
+        str = str.slice(0, -1);
+        str += "] " + tau.typeString + ")";
+        super(str);
+        this.tyvars = tyvars;
+        this.tau = tau;
+    }
+}
+
+class Funty extends Type {
+
+    /**
+     * 
+     * @param {Array<Type>} taus : Parameter types
+     * @param {Type} tau : Return type
+     */
+    constructor(taus, tau) {
+        let str = "("
+        for (let i = 0; i < taus.length; i++) {
+            str += taus[i].typeString + " ";
+        }
+        str += "-> " + tau + ")";
+        super(str)
+        this.taus = taus;
+        this.tau = tau;
+    }
+}
+
 /**
  * 
  * 
@@ -66,12 +174,16 @@ class ExpEvalBundle {
     }
 }
 
+// abstract class
 class Literal extends Expression {
 
-    value;
-    constraint;
+    value; // string
+    constraint; // Constraint
+    type; // Type
 
+    // private constructor, not meant to be instantiated
     constructor() {
+        super();
         this.constraint = Constraint.trivial;
     }
 
@@ -79,44 +191,41 @@ class Literal extends Expression {
         if (val == "#t" || val == "#f") {
             return BoolV(val);
         }
+        else if (val[0] == "'(") {
+            
+        }
         return Num(val);
     }
 
-    get type() {}
-
+    // inherited methods for all subclasses
     eval() {
-        return this.value;
+        return new ExpEvalBundle(value, type, constraint);
     }
 }
 
 class Sym extends Literal {
-    get type() {
-        return "sym"
-    }
     constructor(value) {
         super();
-        this.value = value;
+        this.value = value.substring(1);
+        this.type = Tycon.symty;
     }
 }
 
 class Num extends Literal {
-    get type() {
-        return "int"
-    }
+
     constructor(int) {
         super();
         this.value = parseInt(int)
+        this.type = Tycon.intty;
     }
 
 }
 
 class BoolV extends Literal {
-    get type() {
-        return "bool"
-    }
     constructor(bool) {
         super();
         this.value = bool;
+        this.type = Tycon.boolty;
     }
 
 }
@@ -124,138 +233,49 @@ class BoolV extends Literal {
 /** EMPTY LSIT */
 class Nil extends Literal {
 
-    value = "'()"
-    get type() {
-        return 
+    constructor() {
+        super();
+        this.value = "'()";
+        let tyvar = new Tyvar();
+        this.type = new Forall([tyvar], new Conapp(new Tycon("list"), [tyvar]))
     }
+     
 }
+
+let l = new Sym("'asdasda")
+console.log(l.value + " : " + l.type.typeString);
+
+let i = new Num("90")
+console.log(i.value + " : " + i.type.typeString)
+
+let nil = new Nil();
+console.log(nil.value + " : " + nil.type.typeString);
+
+let nil2 = new Nil();
+console.log(nil2.value + " : " + nil2.type.typeString);
+
+
 
 /** FOR LISTS */
-class Pair extends Literal {
+// class Pair extends Literal {
 
-    val1;
-    val2;
-    get type() {
+//     val1;
+//     val2;
+//     get type() {
 
-    }
+//     }
 
-    eval() {
+//     eval() {
 
-    }
-    /**
-     * 
-     * @param {Literal} val1 
-     * @param {Literal} val2 
-     */
-    constructor(val1, val2) {
-        this.val1 = val1;
-        this.val2 = val2;
-
-    }
+//     }
+//     /**
+//      * 
+//      * @param {Literal} val1 
+//      * @param {Literal} val2 
+//      */
+//     constructor(val1, val2) {
+//         this.val1 = val1;
+//         this.val2 = val2;
+//     }
    
-}
-
-/**
- * 
- * TYPES
- * 
- * 
- */
-// type interface
-class Type {
-    typeString;
-    constructor(name) {
-        this.typeString = name;
-    }
-}
-
-class Tycon extends Type {
-    
-    static boolty = Tycon("bool")
-    static intty = Tycon("int")
-    static symty = Tycon("sym")
-    static unitty = Tycon("unit")
-
-    constructor(name) {
-        super(name);
-    }
-}
-
-class Tyvar extends Type {
-    static tCounter = -1;
-
-    constuctor() {
-        tCounter++;
-        super("'t" + tCounter);
-    }
-
-    static reset() {
-        tCounter = 0;
-    }
-}
-
-class Conapp extends Type {
-
-    /**
-     * 
-     * @param {Tycon} tycon 
-     * @param {Array<Type>} types 
-     */
-    constructor (tycon, types) {
-        this.tycon = tycon;
-        this.types = types;
-        str = "(" + this.tycon.typeString;
-        for (let i = 0; i < types.length; i++) {
-            str += " " + types[i].typeString;
-        }
-        super(str)
-    }
-
-}
-
-class Forall extends Type {
-
-
-    /**
-     * Forall datatype constructor
-     * @param {Array<Tyvar>} tyvars 
-     * @param {Type} tau 
-     */
-    constructor(tyvars, tau) {
-        this.tyvars = tyvars;
-        this.tau = tau;
-        str = "(forall [";
-        for (let i = 0; i < tyvars.length; i++) {
-            str += tyvars[i].typeString + " ";
-        }
-        str = str.slice(0, -1);
-        str += "] " + tau.typeString;
-    }
-}
-
-class Funty extends Type {
-
-    /**
-     * 
-     * @param {Array<Type>} taus : Parameter types
-     * @param {Type} tau : Return type
-     */
-    constructor(taus, tau) {
-        this.taus = taus;
-        this.tau = tau;
-        str = "("
-        for (let i = 0; i < taus.length; i++) {
-            str += taus[i].typeString + " ";
-        }
-        str += "-> " + tau + ")";
-    }
-}
-
-///////////////////////////
-//
-//      CONSTRAINT SOLVING
-//
-//
-class Constraint {
-    static trivial = "T"
-}
+// }
