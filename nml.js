@@ -132,14 +132,14 @@ class And extends Constraint {
     }
 
     solve() {
-        let theta1 = c1.solve();
-        let theta2 = c2.solve();
+        let theta1 = this.c1.solve();
+        let theta2 = this.c2.consubst(theta1).solve();
         return theta2.compose(theta1);
     }
 
     consubst(sub) { 
-        this.c1.consubst(sub)
-        this.c2.consubst(sub)
+        this.c1.consubst(sub);
+        this.c2.consubst(sub);
     }
 }
 
@@ -161,7 +161,23 @@ class Equal extends Constraint {
     }
 
     solve() {
+        
+    }
 
+    /**
+     * Constitutes a theta into the constraint
+     * @param {Substitution} sub 
+     */
+    consubst(sub) {
+        let keys = sub.mapping.keys();
+        for (let key in keys) {
+            if (this.tau1.typeString == key) {
+                this.tau1 = sub.mapping[key];
+            }
+            if (this.tau2.typeString == key) {
+                this.tau2 = sub.mapping[key];
+            }
+        }
     }
 }
 
