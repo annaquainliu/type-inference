@@ -197,6 +197,12 @@ class Type {
     static listtype(tau) {
         return new Conapp(new Tycon("list"), [tau]);
     }
+
+    /**
+     * @returns {Array<Tyvar>} Array of free type variables
+     */
+    freetyvars() {}
+
 }
 
 class Tycon extends Type {
@@ -209,6 +215,11 @@ class Tycon extends Type {
     constructor(name) {
         super(name);
     }
+
+    freetyvars() {
+        return [];
+    }
+
 }
 
 class Tyvar extends Type {
@@ -222,6 +233,12 @@ class Tyvar extends Type {
     static reset() {
         tCounter = 0;
     }
+    
+    freetyvars() {
+        return [this];
+    }
+
+
 }
 
 class Conapp extends Type {
@@ -242,11 +259,17 @@ class Conapp extends Type {
         this.types = types;
     }
 
+    freetyvars() {
+        let vars = [];
+        for (let type in types) {
+            vars.concat(type.freetyvars());
+        }
+        return vars;
+    }
+
 }
 
 class Forall extends Type {
-
-
     /**
      * Forall datatype constructor
      * @param {Array<Tyvar>} tyvars 
@@ -262,6 +285,18 @@ class Forall extends Type {
         super(str);
         this.tyvars = tyvars;
         this.tau = tau;
+    }
+
+    freetyvars() {
+        let generalized = this.tyvars;
+        let tyvars = this.type.freetyvars();
+        let diff = [];
+        for (let tyvar in tyvars) {
+            if (!generalized.includes(tyvar)) {
+                diff.push(tyvar);
+            }
+        }
+        return diff;
     }
 }
 
@@ -281,6 +316,15 @@ class Funty extends Type {
         super(str)
         this.taus = taus;
         this.tau = tau;
+    }
+
+    freetyvars() {
+        let freevars = [];
+        freevars.concat(this.tau.freetyvars());
+        for (let tau in this.taus) {
+            freevars.concat(tau.freetyvars());
+        }
+        return freevars;
     }
 }
 
