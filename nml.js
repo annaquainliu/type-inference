@@ -216,6 +216,9 @@ class Tycon extends Type {
         super(name);
     }
 
+    /**
+     * @returns {Array<Tyvar>} Array of free type variables
+     */
     freetyvars() {
         return [];
     }
@@ -234,6 +237,9 @@ class Tyvar extends Type {
         tCounter = 0;
     }
     
+    /**
+     * @returns {Array<Tyvar>} Array of free type variables
+     */
     freetyvars() {
         return [this];
     }
@@ -259,10 +265,13 @@ class Conapp extends Type {
         this.types = types;
     }
 
+    /**
+     * @returns {Array<Tyvar>} Array of free type variables
+     */
     freetyvars() {
         let vars = [];
-        for (let type of types) {
-            vars.concat(type.freetyvars());
+        for (let type of this.types) {
+            vars = vars.concat(type.freetyvars());
         }
         return vars;
     }
@@ -281,15 +290,18 @@ class Forall extends Type {
             str += tyvars[i].typeString + " ";
         }
         str = str.slice(0, -1);
-        str += "] " + tau.typeString + ")";
+        str += (tyvars.length == 0 ? "" : "] ") + tau.typeString + ")";
         super(str);
         this.tyvars = tyvars;
         this.tau = tau;
     }
 
+    /**
+     * @returns {Array<Tyvar>} Array of free type variables
+     */
     freetyvars() {
         let generalized = this.tyvars;
-        let tyvars = this.type.freetyvars();
+        let tyvars = this.tau.freetyvars();
         let diff = [];
         for (let tyvar of tyvars) {
             if (!generalized.includes(tyvar)) {
@@ -312,27 +324,25 @@ class Funty extends Type {
         for (let i = 0; i < taus.length; i++) {
             str += taus[i].typeString + " ";
         }
-        str += "-> " + tau + ")";
+        str += "-> " + tau.typeString + ")";
         super(str)
         this.taus = taus;
         this.tau = tau;
     }
 
+    /**
+     * @returns {Array<Tyvar>} Array of free type variables
+     */
     freetyvars() {
         let freevars = [];
-        freevars.concat(this.tau.freetyvars());
+        freevars = freevars.concat(this.tau.freetyvars());
         for (let tau of this.taus) {
-            freevars.concat(tau.freetyvars());
+            freevars = freevars.concat(tau.freetyvars());
         }
         return freevars;
     }
 }
 
-
-let c = new Equal(new Tyvar(), Tycon.intty);
-let s = new Substitution({"'t0" : Tycon.intty});
-c.consubst(s);
-console.log(c);
 /**
  * 
  * 
