@@ -62,12 +62,14 @@ class Substitution {
      * compose : Combine both substitutions
      * @param {Subtitution} theta1 
      * @param {Substitution} theta2 
+     * @returns {Substitution} self
      */
     compose(theta2) {
-        let keys = theta2.keys();
-        for (let key in keys) {
-            this.mapping[key] = theta2[key];
+        let keys = Object.keys(theta2.mapping);
+        for (let key of keys) {
+            this.mapping[key] = theta2.mapping[key];
         }
+        return this;
     }
 
     /**
@@ -96,6 +98,7 @@ class Constraint {
      /**
      * Substitutes a substitution into the constraint
      * @param {Substitution} sub 
+     * @returns {Constraint} : returns edited constraint that is solved
      */
     consubst(sub) { }
 
@@ -110,8 +113,8 @@ class Trivial extends Constraint {
     toString() {
         return "T";
     }
-
-    consubst(sub) { }
+ 
+    consubst(sub) {return this;}
 }
 
 class And extends Constraint {
@@ -133,13 +136,15 @@ class And extends Constraint {
 
     solve() {
         let theta1 = this.c1.solve();
+        console.log(theta1);
         let theta2 = this.c2.consubst(theta1).solve();
-        return theta2.compose(theta1);
+        return theta1.compose(theta2);
     }
 
     consubst(sub) { 
         this.c1.consubst(sub);
         this.c2.consubst(sub);
+        return this;
     }
 }
 
@@ -161,7 +166,7 @@ class Equal extends Constraint {
     }
 
     solve() {
-        this.tau1.solve(tau2);
+        return this.tau1.solve(this.tau2);
     }
 
     /**
@@ -169,7 +174,7 @@ class Equal extends Constraint {
      * @param {Substitution} sub 
      */
     consubst(sub) {
-        let keys = Object.keys(sub.mapping)
+        let keys = Object.keys(sub.mapping);
         for (let key of keys) {
             if (this.tau1.typeString == key) {
                 this.tau1 = sub.mapping[key];
@@ -178,6 +183,7 @@ class Equal extends Constraint {
                 this.tau2 = sub.mapping[key];
             }
         }
+        return this;
     }
 }
 
@@ -189,10 +195,8 @@ class Equal extends Constraint {
  */
 // type interface
 class Type {
-    typeString;
-    constructor(name) {
-        this.typeString = name;
-    }
+
+    constructor() {}
 
     static listtype(tau) {
         return new Conapp(new Tycon("list"), [tau]);
@@ -206,25 +210,31 @@ class Type {
     /**
      * Solves any type ~ any type equality
      * @param {Type} tau 
+     * @returns {Substitution}
      */
     solve(tau) { }
      /**
      * Solves tycon ~ tycon equality
      * @param {Tycon} tycon 
+     * @returns {Substitution}
      */
      solveTycon(tycon) {}
  
      /**
       * Solves tycon ~ conapp equality
       * @param {Conapp} conapp 
+      * @returns {Substitution}
       */
      solveConapp(conapp) {}
  
      /**
       * solves tycon ~ tyvar equality
       * @param {Tyvar} tyvar 
+      * @returns {Substitution}
       */
      solveTyvar(tyvar) {}
+
+
 
 }
 
@@ -236,7 +246,8 @@ class Tycon extends Type {
     static unitty = new Tycon("unit")
 
     constructor(name) {
-        super(name);
+        super();
+        this.name = name;
     }
 
     /**
@@ -246,16 +257,22 @@ class Tycon extends Type {
         return [];
     }
 
+    get typeString() {
+        return this.name;
+    }
+
     /**
+     * @returns {Substitution}
      * @returns {Substitution}
      */
     solve(tau) {
-        tau.solveTycon(this);
+        return tau.solveTycon(this);
     }
 
     /**
      * Solves tycon ~ tycon equality
      * @param {Tycon} tycon 
+     * @returns {Substitution}
      */
     solveTycon(tycon) {
         if (tycon.typeString == this.typeString) {
@@ -267,6 +284,7 @@ class Tycon extends Type {
     /**
      * Solves tycon ~ conapp equality
      * @param {Conapp} conapp 
+     * @returns {Substitution}
      */
     solveConapp(conapp) {
         throw new Error(conapp.typeString + " cannot equal " + this.typeString);
@@ -275,20 +293,28 @@ class Tycon extends Type {
     /**
      * solves tycon ~ tyvar equality
      * @param {Tyvar} tyvar 
+     * @returns {Substitution}
      */
     solveTyvar(tyvar) {
         let map = {};
         map[tyvar.typeString] = this;
-        return Substitution(map);
+        return new Substitution(map);
     }
+
 }
 
 class Tyvar extends Type {
-    static tCounter = -1;
+    static tCounter = 0;
+    count;
 
     constructor() {
+        super();
+        this.count = Tyvar.tCounter;
         Tyvar.tCounter++;
-        super("'t" + Tyvar.tCounter);
+    }
+
+    get typeString() {
+        return "'t" + this.count;
     }
 
     static reset() {
@@ -297,6 +323,7 @@ class Tyvar extends Type {
     
     /**
      * @returns {Array<Tyvar>} Array of free type variables
+     * @returns {Substitution}
      */
     freetyvars() {
         return [this];
@@ -306,7 +333,7 @@ class Tyvar extends Type {
      * @returns {Substitution}
      */
     solve(tau) {
-        tau.solveTyvar(this);
+        return tau.solveTyvar(this);
     }
 
     /**
@@ -314,7 +341,7 @@ class Tyvar extends Type {
      * @param {Tycon} tycon 
      */
     solveTycon(tycon) {
-        tycon.solveTyvar(this);
+        return tycon.solveTyvar(this);
     }
 
     /**
@@ -349,14 +376,18 @@ class Conapp extends Type {
      * @param {Array<Type>} types 
      */
     constructor (tycon, types) {
-        let str = "(" + tycon.typeString;
-        for (let i = 0; i < types.length; i++) {
-            str += " " + types[i].typeString;
-        }
-        str += ")";
-        super(str);
+        super();
         this.tycon = tycon;
         this.types = types;
+    }
+
+    get typeString() {
+        let str = "(" + this.tycon.typeString;
+        for (let i = 0; i < this.types.length; i++) {
+            str += " " + this.types[i].typeString;
+        }
+        str += ")";
+        return str;
     }
 
     /**
@@ -374,7 +405,7 @@ class Conapp extends Type {
      * @returns {Substitution}
      */
     solve(tau) {
-        tau.solveConapp(this);
+        return tau.solveConapp(this);
     }
 
     /**
@@ -382,6 +413,7 @@ class Conapp extends Type {
      * @param {Tycon} tycon 
      */
     solveTycon(tycon) {
+        
         throw new Error(tycon.typeString + " cannot equal " + this.typeString);
     }
 
@@ -405,7 +437,7 @@ class Conapp extends Type {
      * @param {Tyvar} tyvar 
      */
     solveTyvar(tyvar) {
-        tyvar.solveConapp(this);
+        return tyvar.solveConapp(this);
     }
 
 }
@@ -417,15 +449,19 @@ class Forall extends Type {
      * @param {Type} tau 
      */
     constructor(tyvars, tau) {
-        let str = "(forall [";
-        for (let i = 0; i < tyvars.length; i++) {
-            str += tyvars[i].typeString + " ";
-        }
-        str = str.slice(0, -1);
-        str += (tyvars.length == 0 ? "" : "] ") + tau.typeString + ")";
-        super(str);
+        super();
         this.tyvars = tyvars;
         this.tau = tau;
+    }
+
+    get typeString() {
+        let str = "(forall [";
+        for (let i = 0; i < this.tyvars.length; i++) {
+            str += this.tyvars[i].typeString + " ";
+        }
+        str = str.slice(0, -1);
+        str += (this.tyvars.length == 0 ? "" : "] ") + this.tau.typeString + ")";
+        return str;
     }
 
     /**
@@ -442,9 +478,10 @@ class Forall extends Type {
         }
         return diff;
     }
+
 }
 
-class Funty extends Type {
+class Funty extends Conapp {
 
     /**
      * 
@@ -452,28 +489,25 @@ class Funty extends Type {
      * @param {Type} tau : Return type
      */
     constructor(taus, tau) {
-        let str = "("
-        for (let i = 0; i < taus.length; i++) {
-            str += taus[i].typeString + " ";
-        }
-        str += "-> " + tau.typeString + ")";
-        super(str)
+        super(new Tycon("function"), [new Conapp(new Tycon("arguments"), taus), tau]);
         this.taus = taus;
         this.tau = tau;
     }
 
-    /**
-     * @returns {Array<Tyvar>} Array of free type variables
-     */
-    freetyvars() {
-        let freevars = [];
-        freevars = freevars.concat(this.tau.freetyvars());
-        for (let tau of this.taus) {
-            freevars = freevars.concat(tau.freetyvars());
+    get typeString() {
+        let str = "("
+        for (let i = 0; i < this.taus.length; i++) {
+            str += this.taus[i].typeString + " ";
         }
-        return freevars;
+        str += "-> " + this.tau.typeString + ")";
+        return str;
     }
 }
+
+let tyvars = [new Tyvar(),new Tyvar() ]
+let bigC = new And(new Equal(tyvars[0], Tycon.intty), new Equal(tyvars[1], new Funty([tyvars[0]], tyvars[0])));
+let sub = bigC.solve();
+console.log(sub);
 
 /**
  * 
