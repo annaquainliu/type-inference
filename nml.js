@@ -161,7 +161,7 @@ class Equal extends Constraint {
     }
 
     solve() {
-        
+        this.tau1.solve(tau2);
     }
 
     /**
@@ -203,6 +203,29 @@ class Type {
      */
     freetyvars() {}
 
+    /**
+     * Solves any type ~ any type equality
+     * @param {Type} tau 
+     */
+    solve(tau) { }
+     /**
+     * Solves tycon ~ tycon equality
+     * @param {Tycon} tycon 
+     */
+     solveTycon(tycon) {}
+ 
+     /**
+      * Solves tycon ~ conapp equality
+      * @param {Conapp} conapp 
+      */
+     solveConapp(conapp) {}
+ 
+     /**
+      * solves tycon ~ tyvar equality
+      * @param {Tyvar} tyvar 
+      */
+     solveTyvar(tyvar) {}
+
 }
 
 class Tycon extends Type {
@@ -223,6 +246,41 @@ class Tycon extends Type {
         return [];
     }
 
+    /**
+     * @returns {Substitution}
+     */
+    solve(tau) {
+        tau.solveTycon(this);
+    }
+
+    /**
+     * Solves tycon ~ tycon equality
+     * @param {Tycon} tycon 
+     */
+    solveTycon(tycon) {
+        if (tycon.typeString == this.typeString) {
+            return Substitution.idsubst;
+        }
+        throw new Error(tycon.typeString + " cannot equal " + this.typeString);
+    }
+
+    /**
+     * Solves tycon ~ conapp equality
+     * @param {Conapp} conapp 
+     */
+    solveConapp(conapp) {
+        throw new Error(conapp.typeString + " cannot equal " + this.typeString);
+    }
+
+    /**
+     * solves tycon ~ tyvar equality
+     * @param {Tyvar} tyvar 
+     */
+    solveTyvar(tyvar) {
+        let map = {};
+        map[tyvar.typeString] = this;
+        return Substitution(map);
+    }
 }
 
 class Tyvar extends Type {
@@ -244,7 +302,43 @@ class Tyvar extends Type {
         return [this];
     }
 
+    /**
+     * @returns {Substitution}
+     */
+    solve(tau) {
+        tau.solveTyvar(this);
+    }
 
+    /**
+     * Solves tyvar ~ tycon equality
+     * @param {Tycon} tycon 
+     */
+    solveTycon(tycon) {
+        tycon.solveTyvar(this);
+    }
+
+    /**
+     * Solves tyvar ~ conapp equality
+     * @param {Conapp} conapp 
+     */
+    solveConapp(conapp) {
+        if (conapp.freetyvars().includes(this)) {
+            throw new Error(this.typeString + "occurs in " + conapp.typeString);
+        }
+        let map = {};
+        map[this.typeString] = conapp;
+        return new Substitution(map);
+    }
+
+    /**
+     * solves tyvar ~ tyvar equality
+     * @param {Tyvar} tyvar 
+     */
+    solveTyvar(tyvar) {
+        let map = {};
+        map[this.typeString] = tyvar;
+        return Substitution(map);
+    }
 }
 
 class Conapp extends Type {
@@ -274,6 +368,44 @@ class Conapp extends Type {
             vars = vars.concat(type.freetyvars());
         }
         return vars;
+    }
+
+    /**
+     * @returns {Substitution}
+     */
+    solve(tau) {
+        tau.solveConapp(this);
+    }
+
+    /**
+     * Solves conapp ~ tycon equality
+     * @param {Tycon} tycon 
+     */
+    solveTycon(tycon) {
+        throw new Error(tycon.typeString + " cannot equal " + this.typeString);
+    }
+
+    /**
+     * Solves conapp ~ conapp equality
+     * @param {Conapp} conapp 
+     */
+    solveConapp(conapp) {
+        if (conapp.types.length != this.types.length) {
+            throw new Error(this.typeString + " ~ " + conapp.typeString + " have different length types array");
+        }
+        let bigConstraint = new Equal(this.tycon, conapp.tycon);
+        for (let i = 0; i < conapp.types.length; i++) {
+            bigConstraint = new And(bigConstraint, new Equal(conapp.types[i], this.types[i]));
+        }
+        return bigConstraint.solve();
+    }
+
+    /**
+     * solves conapp ~ tyvar equality
+     * @param {Tyvar} tyvar 
+     */
+    solveTyvar(tyvar) {
+        tyvar.solveConapp(this);
     }
 
 }
