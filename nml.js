@@ -169,8 +169,8 @@ class Equal extends Constraint {
      * @param {Substitution} sub 
      */
     consubst(sub) {
-        let keys = sub.mapping.keys();
-        for (let key in keys) {
+        let keys = Object.keys(sub.mapping)
+        for (let key of keys) {
             if (this.tau1.typeString == key) {
                 this.tau1 = sub.mapping[key];
             }
@@ -261,7 +261,7 @@ class Conapp extends Type {
 
     freetyvars() {
         let vars = [];
-        for (let type in types) {
+        for (let type of types) {
             vars.concat(type.freetyvars());
         }
         return vars;
@@ -291,7 +291,7 @@ class Forall extends Type {
         let generalized = this.tyvars;
         let tyvars = this.type.freetyvars();
         let diff = [];
-        for (let tyvar in tyvars) {
+        for (let tyvar of tyvars) {
             if (!generalized.includes(tyvar)) {
                 diff.push(tyvar);
             }
@@ -321,13 +321,18 @@ class Funty extends Type {
     freetyvars() {
         let freevars = [];
         freevars.concat(this.tau.freetyvars());
-        for (let tau in this.taus) {
+        for (let tau of this.taus) {
             freevars.concat(tau.freetyvars());
         }
         return freevars;
     }
 }
 
+
+let c = new Equal(new Tyvar(), Tycon.intty);
+let s = new Substitution({"'t0" : Tycon.intty});
+c.consubst(s);
+console.log(c);
 /**
  * 
  * 
