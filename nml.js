@@ -136,7 +136,6 @@ class And extends Constraint {
 
     solve() {
         let theta1 = this.c1.solve();
-        console.log(theta1);
         let theta2 = this.c2.consubst(theta1).solve();
         return theta1.compose(theta2);
     }
@@ -364,7 +363,7 @@ class Tyvar extends Type {
     solveTyvar(tyvar) {
         let map = {};
         map[this.typeString] = tyvar;
-        return Substitution(map);
+        return new Substitution(map);
     }
 }
 
@@ -503,11 +502,6 @@ class Funty extends Conapp {
         return str;
     }
 }
-
-let tyvars = [new Tyvar(),new Tyvar() ]
-let bigC = new And(new Equal(tyvars[0], Tycon.intty), new Equal(tyvars[1], new Funty([tyvars[0]], tyvars[0])));
-let sub = bigC.solve();
-console.log(sub);
 
 /**
  * 
