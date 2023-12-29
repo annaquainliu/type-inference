@@ -9,29 +9,75 @@ function main() {
     const input = document.getElementById("code");
     const interpretButton = document.getElementById("interpret")
     interpretButton.addEventListener("click", () => {
-        parser(input.value)
+        let parser = new Parser(input.value);
     });
     
 }
 
-function parser(input) {
-    input = input.replaceAll("[", "(")
-    input = input.replaceAll("]", ")")
-    input = input.split("(").join(" ").split(" ");
-    input = input.filter(word => word != "");
-    for (let i = 0; i < input.length; i++) {
-        let word = input[i];
-        if (word.includes(")")) {
-            let brackets = word.split("");
-            input = input.slice(0, i).concat(brackets).concat(input.slice(i + 1, input.length));
+class Parser {
+    queue = [];
+
+    constructor(input) {
+        input = input.replaceAll("[", "(")
+        input = input.replaceAll("]", ")")
+        input = input.split("(").join(" ").split(" ");
+        input = input.filter(word => word != "");
+        input = input.map(item => item.toLowerCase());
+        for (let i = 0; i < input.length; i++) {
+            let word = input[i];
+            if (word.includes(")") || word.includes("'(")) {
+                let brackets = word.split("");
+                input = input.slice(0, i).concat(brackets).concat(input.slice(i + 1, input.length));
+            }
+        }
+        console.log(input)
+        queue = input.reverse();
+        let exp = queue.pop();
+        this.tokenize(exp);
+    }
+
+    /**
+     * Tokenizes code written by user
+     * @param {String} exp 
+     * @returns {Expression} 
+     */
+    tokenize(exp) {
+        if (exp == "if") {
+        
+        }
+        else if (exp == "begin") {
+
+        }
+        else if (exp == "let") {
+
+        }
+        else if (exp == "let*") {
+
+        }
+        else if (exp == "letrec") {
+
+        }
+        else if (exp == "lambda") {
+
+        }
+        else if (exp == "'") { // must be a list
+            this.queue.pop(); // pop for (
+            let item = this.queue.pop();
+            if (item == ")") {
+                return new Nil();
+            }
+            let token = new Pair(item, new Nil());
+            item = this.queue.pop();
+            while (item != ")") {
+                token.val2 = new Pair(tokenize(item), new Nil());
+                item = this.queue.pop();
+            }
+            return token;
+        }
+        else {
+            return Literal.makeLiteral(exp);
         }
     }
-    console.log(input)
-    
-}
-
-
-function interpret() {
 
 }
 
@@ -62,7 +108,7 @@ class Substitution {
      * compose : Combine both substitutions
      * @param {Subtitution} theta1 
      * @param {Substitution} theta2 
-     * @returns {Substitution} self
+     * @returns {Substitution} this
      */
     compose(theta2) {
         let keys = Object.keys(theta2.mapping);
@@ -102,7 +148,30 @@ class Constraint {
      */
     consubst(sub) { }
 
+    /**
+     * Conjoins this constraint with all of the constraints in cs
+     * @param {Array<Constraint>} cs
+     * @returns {Constraint}
+     */
+    conjoin(cs) {
+        if (cs.length == 0) {
+            return new And(this, new Trivial());
+        }
+        return new And(this, cs.pop().conjoin(cs));
+    }
+    
+    /**
+     * Conjoins all of the constraints in cs
+     * @param {Array<Constraint>} cs
+     */
+    static conjoin(cs) {
+        if (cs.length == 0) {
+            return new Trivial();
+        }
+        return cs.pop().conjoin(cs);
+    }
 }
+
 
 class Trivial extends Constraint {
 
@@ -115,6 +184,7 @@ class Trivial extends Constraint {
     }
  
     consubst(sub) {return this;}
+
 }
 
 class And extends Constraint {
@@ -551,8 +621,8 @@ class Literal extends Expression {
         if (val == "#t" || val == "#f") {
             return BoolV(val);
         }
-        else if (val[0] == "'(") {
-
+        else if (val[0] == "'") {
+            return Sym(val);
         }
         return Num(val);
     }
@@ -584,7 +654,7 @@ class Num extends Literal {
 class BoolV extends Literal {
     constructor(bool) {
         super();
-        this.value = bool;
+        this.value = bool == "#t" ? true : false;
         this.type = Tycon.boolty;
     }
 
@@ -605,7 +675,6 @@ class Nil extends Literal {
 
 /** FOR LISTS */
 class Pair extends Literal {
-    
 
     eval() {
         let fstPackage = this.val1.eval();
@@ -634,3 +703,29 @@ class Pair extends Literal {
     }
    
 }
+
+class If extends Expression {
+
+    // all fields are of type Expression
+    condition;
+    trueCase; 
+    falseCase;
+
+    constructor(c, t, f) {
+        this.condition = c;
+        this.trueCase = t;
+        this.falseCase = f;
+    }
+
+    /**
+     * @returns {ExpEvalBundle}
+     */
+    eval() {
+        let results = [condition.eval(), trueCase.eval(), falseCase.eval()];
+        let index = condition.eval() ? 1 : 2;
+
+        return new ExpEvalBundle(results[index].val, results[index].tau, )
+    }
+}
+
+module.exports = {Constraint : Constraint, And : And, Equal : Equal, Type : Type, Tycon : Tycon, Trivial : Trivial};
