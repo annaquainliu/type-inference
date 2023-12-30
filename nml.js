@@ -31,7 +31,6 @@ class Parser {
             }
         }
         this.queue = input.reverse();
-        console.log(this.queue);
         return this.tokenize(this.queue.pop());
     }
 
@@ -46,7 +45,13 @@ class Parser {
             return new If(tokenize(this.queue.pop()), tokenize(this.queue.pop()), tokenize(this.queue.pop()));
         }
         else if (exp == "begin") {
-            return new Begin(this.tokenBegin());
+            let item = this.queue.pop();
+            let arr = []
+            while (item != ")") {
+                arr.push(this.tokenize(item));
+                item = this.queue.pop();
+            }
+            return new Begin(arr);
         }
         else if (exp == "let") {
             return new Let(this.tokenLet());
@@ -63,14 +68,14 @@ class Parser {
         else if (exp == "'") { // must be a list
             return this.tokenPair();
         }
-        else if (val == "#t" || val == "#f") {
-            return new BoolV(val);
+        else if (exp == "#t" || exp == "#f") {
+            return new BoolV(exp);
         }
-        else if (val[0] == "'") {
-            return new Sym(val);
+        else if (exp[0] == "'") {
+            return new Sym(exp);
         }
-        else if (/^-?\d+$/.test(val)) { 
-            return new Num(val);
+        else if (/^-?\d+$/.test(exp)) { 
+            return new Num(exp);
         }
         throw new Error(exp + " is not a valid expression!");
     }
@@ -93,24 +98,17 @@ class Parser {
         return new Sym(exp);
     }
 
-    tokenBegin() {
-        let item = this.queue.pop();
-        if (item == ")") {
-            return [];
-        }
-        return this.tokenBegin().push(this.tokenize(item));
-    }
-
     //  [')', 'x', ')', ')', '3', 'x', 'let']
     tokenLet() {
         let bindings = this.tokenLetBindings();
-        let exp = tokenize(this.queue.pop());
+        console.log(this.queue);
+        let exp = this.tokenize(this.queue.pop());
         this.queue.pop(); // for last closing )
         return {"bindings": bindings, "exp" : exp};
     }
 
     tokenLetBindings() {
-        if (queue[this.queue.length - 1] == ")") {
+        if (this.queue[this.queue.length - 1] == ")") {
             this.queue.pop(); // for )
             return {};
         }
@@ -119,7 +117,7 @@ class Parser {
         this.queue.pop(); // for closing )
         let obj = {};
         obj[name] = exp;
-        return Object.assign(this.tokenLet(), obj);
+        return Object.assign(this.tokenLetBindings(), obj);
     }
 
     tokenLambda() {
@@ -361,8 +359,6 @@ class Type {
       * @returns {Substitution}
       */
      solveTyvar(tyvar) {}
-
-
 
 }
 
@@ -795,6 +791,7 @@ class Begin extends Expression {
      * @param {Array<Expression>} es 
      */
     constructor(es) {
+        super();
         this.es = es;
     }
 }
@@ -823,6 +820,7 @@ class Let extends Expression {
      * @param {Map<String, Object>} info
      */
     constructor(info) {
+        super();
         this.bindings = info["bindings"];
         this.exp = info["exp"];
     }
