@@ -16,7 +16,6 @@ main();
 
 class Parser {
     queue = [];
-
     constructor(input) {
         input = input.replaceAll("[", "(")
         input = input.replaceAll("]", ")")
@@ -41,29 +40,36 @@ class Parser {
      */
     tokenize(exp) {
         if (exp == "if") {
-        
+            return new If(tokenize(this.queue.pop()), tokenize(this.queue.pop()), tokenize(this.queue.pop()));
         }
         else if (exp == "begin") {
-
+            return new Begin(this.tokenBegin());
         }
         else if (exp == "let") {
-
+            return new Let(this.tokenLet());
         }
         else if (exp == "let*") {
-
+            return new LetStar(this.tokenLet());
         }
         else if (exp == "letrec") {
-
+            return new Letrec(this.tokenLet());
         }
         else if (exp == "lambda") {
-
+            return this.tokenLambda();
         }
         else if (exp == "'") { // must be a list
             return this.tokenPair();
         }
-        else {
-            return Literal.makeLiteral(exp);
+        else if (val == "#t" || val == "#f") {
+            return new BoolV(val);
         }
+        else if (val[0] == "'") {
+            return new Sym(val);
+        }
+        else if (/^-?\d+$/.test(val)) { 
+            return new Num(val);
+        }
+        throw new Error(exp + " is not a valid expression!");
     }
 
     tokenPair() {
@@ -71,12 +77,61 @@ class Parser {
         if (item == ")") {
             return new Nil();
         }
-        return new Pair(this.tokenize(item), this.tokenPair());
+        return new Pair(this.tokenListLiterals(item), this.tokenPair());
+    }
+
+    tokenListLiterals(exp) {
+        if (exp == "#t" || exp == "#f") {
+            return new BoolV(exp);
+        }
+        else if ((/^-?\d+$/.test(val)) {
+            return new Num(exp);
+        }
+        return new Sym(exp);
+    }
+
+    tokenBegin() {
+        let item = this.queue.pop();
+        if (item == ")") {
+            return [];
+        }
+        return this.tokenBegin().push(this.tokenize(item));
     }
 
     tokenInput() {
         let exp = this.queue.pop();
         return this.tokenize(exp);
+    }
+    //  [')', 'x', ')', ')', '3', 'x', 'let']
+    tokenLet() {
+        let bindings = this.tokenLetBindings();
+        let exp = tokenize(this.queue.pop());
+        this.queue.pop(); // for last closing )
+        return {"bindings": bindings, "exp" : exp};
+    }
+
+    tokenLetBindings() {
+        if (queue[this.queue.length - 1] == ")") {
+            this.queue.pop(); // for )
+            return {};
+        }
+        let name = this.queue.pop();
+        let exp = this.tokenize(this.queue.pop());
+        this.queue.pop(); // for closing )
+        let obj = {};
+        obj[name] = exp;
+        return Object.assign(this.tokenLet(), obj);
+    }
+
+    tokenLambda() {
+        let params = [];
+        let item = this.queue.pop();
+        while (item != ")") {
+            params.push(item);
+            item = this.queue.pop();
+        }
+        let exp = tokenize(this.queue.pop());
+        return new Lambda(params, exp);
     }
 
 }
@@ -620,17 +675,6 @@ class Literal extends Expression {
         super();
         this.constraint = new Trivial();;
     }
-
-    static makeLiteral(val) {
-        if (val == "#t" || val == "#f") {
-            return new BoolV(val);
-        }
-        else if (val[0] == "'") {
-            return new Sym(val);
-        }
-        return new Num(val);
-    }
-
     // inherited methods for all subclasses
     eval() {
         return new ExpEvalBundle(this.value, this.type, this.constraint);
@@ -739,7 +783,6 @@ class If extends Expression {
 class Begin extends Expression {
 
     es = [];
-
     /**
      * 
      * @param {Array<Expression>} es 
@@ -751,17 +794,38 @@ class Begin extends Expression {
 
 class Lambda extends Expression {
 
+    params;
+    exp;
+
+    /**
+     * @param {Array<String>} params 
+     * @param {Expression} exp 
+     */
+    constructor(params, exp) {
+        this.params = params;
+        this.exp = exp;
+    }
 }
 
 class Let extends Expression {
 
+    bindings;
+    exp;
+
+    /**
+     * @param {Map<String, Object>} info
+     */
+    constructor(info) {
+        this.bindings = info["bindings"];
+        this.exp = info["exp"];
+    }
 }
 
-class Letrec extends Expression {
+class Letrec extends Let {
 
 }
 
-class LetStar extends Expression {
+class LetStar extends Let {
     
 }
 
