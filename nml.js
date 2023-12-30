@@ -1,18 +1,18 @@
 // page 405 : Expression evaluations
 // page 421 : Type Inference Rules
 
-Gamma = {}
-Rho = {}
-
 function main() {
     // page 404 : nml expressions
     const input = document.getElementById("code");
     const interpretButton = document.getElementById("interpret")
     interpretButton.addEventListener("click", () => {
         let parser = new Parser(input.value);
+        let exp = parser.tokenInput();
+        console.log(exp);
     });
-    
 }
+
+main();
 
 class Parser {
     queue = [];
@@ -30,10 +30,8 @@ class Parser {
                 input = input.slice(0, i).concat(brackets).concat(input.slice(i + 1, input.length));
             }
         }
-        console.log(input)
-        queue = input.reverse();
-        let exp = queue.pop();
-        this.tokenize(exp);
+        this.queue = input.reverse();
+        console.log(this.queue);
     }
 
     /**
@@ -61,22 +59,24 @@ class Parser {
 
         }
         else if (exp == "'") { // must be a list
-            this.queue.pop(); // pop for (
-            let item = this.queue.pop();
-            if (item == ")") {
-                return new Nil();
-            }
-            let token = new Pair(item, new Nil());
-            item = this.queue.pop();
-            while (item != ")") {
-                token.val2 = new Pair(tokenize(item), new Nil());
-                item = this.queue.pop();
-            }
-            return token;
+            return this.tokenPair();
         }
         else {
             return Literal.makeLiteral(exp);
         }
+    }
+
+    tokenPair() {
+        let item = this.queue.pop();
+        if (item == ")") {
+            return new Nil();
+        }
+        return new Pair(this.tokenize(item), this.tokenPair());
+    }
+
+    tokenInput() {
+        let exp = this.queue.pop();
+        return this.tokenize(exp);
     }
 
 }
@@ -583,6 +583,10 @@ class Funty extends Conapp {
 
 // Expression Interface
 class Expression {
+
+    static Gamma = {}
+    static Rho = {}
+
     constructor() {}
     /**
      * @returns {ExpEvalBundle}
@@ -619,12 +623,12 @@ class Literal extends Expression {
 
     static makeLiteral(val) {
         if (val == "#t" || val == "#f") {
-            return BoolV(val);
+            return new BoolV(val);
         }
         else if (val[0] == "'") {
-            return Sym(val);
+            return new Sym(val);
         }
-        return Num(val);
+        return new Num(val);
     }
 
     // inherited methods for all subclasses
@@ -723,9 +727,42 @@ class If extends Expression {
     eval() {
         let results = [condition.eval(), trueCase.eval(), falseCase.eval()];
         let index = condition.eval() ? 1 : 2;
-
-        return new ExpEvalBundle(results[index].val, results[index].tau, )
+        let cs = [new Equal(results[0].tau, Tycon.boolty), new Equal(results[1].tau, results[2].tau)];
+        for (let i = 0; i < results.length; i++) {
+            cs.push(results[i].constraint);
+        }
+        let bigC = Constraint.conjoin(cs);
+        return new ExpEvalBundle(results[index].val, results[index].tau, bigC);
     }
 }
 
-module.exports = {Constraint : Constraint, And : And, Equal : Equal, Type : Type, Tycon : Tycon, Trivial : Trivial};
+class Begin extends Expression {
+
+    es = [];
+
+    /**
+     * 
+     * @param {Array<Expression>} es 
+     */
+    constructor(es) {
+        this.es = es;
+    }
+}
+
+class Lambda extends Expression {
+
+}
+
+class Let extends Expression {
+
+}
+
+class Letrec extends Expression {
+
+}
+
+class LetStar extends Expression {
+    
+}
+
+// module.exports = {Constraint : Constraint, And : And, Equal : Equal, Type : Type, Tycon : Tycon, Trivial : Trivial};
