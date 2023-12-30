@@ -6,17 +6,18 @@ function main() {
     const input = document.getElementById("code");
     const interpretButton = document.getElementById("interpret")
     interpretButton.addEventListener("click", () => {
-        let parser = new Parser(input.value);
-        let exp = parser.tokenInput();
+        let parser = new Parser();
+        let exp = parser.tokenInput(input.value);
         console.log(exp);
     });
 }
 
-main();
+// main();
 
 class Parser {
     queue = [];
-    constructor(input) {
+
+    tokenInput(input) {
         input = input.replaceAll("[", "(")
         input = input.replaceAll("]", ")")
         input = input.split("(").join(" ").split(" ");
@@ -31,10 +32,12 @@ class Parser {
         }
         this.queue = input.reverse();
         console.log(this.queue);
+        return this.tokenize(this.queue.pop());
     }
 
     /**
      * Tokenizes code written by user
+     * 
      * @param {String} exp 
      * @returns {Expression} 
      */
@@ -71,7 +74,7 @@ class Parser {
         }
         throw new Error(exp + " is not a valid expression!");
     }
-
+   
     tokenPair() {
         let item = this.queue.pop();
         if (item == ")") {
@@ -84,7 +87,7 @@ class Parser {
         if (exp == "#t" || exp == "#f") {
             return new BoolV(exp);
         }
-        else if (/^-?\d+$/.test(val)) {
+        else if (/^-?\d+$/.test(exp)) {
             return new Num(exp);
         }
         return new Sym(exp);
@@ -98,10 +101,6 @@ class Parser {
         return this.tokenBegin().push(this.tokenize(item));
     }
 
-    tokenInput() {
-        let exp = this.queue.pop();
-        return this.tokenize(exp);
-    }
     //  [')', 'x', ')', ')', '3', 'x', 'let']
     tokenLet() {
         let bindings = this.tokenLetBindings();
@@ -183,6 +182,11 @@ class Substitution {
 }
 
 // abstract class
+/**
+ * 'a ~ s /\ 'int ~ bool
+ * 
+ * {a |--> int}
+ */
 class Constraint {
 
     /**
@@ -388,6 +392,8 @@ class Tycon extends Type {
     /**
      * @returns {Substitution}
      * @returns {Substitution}
+     * 
+     * tycon ~ any tau 
      */
     solve(tau) {
         return tau.solveTycon(this);
@@ -470,6 +476,7 @@ class Tyvar extends Type {
 
     /**
      * Solves tyvar ~ conapp equality
+     * 
      * @param {Conapp} conapp 
      */
     solveConapp(conapp) {
@@ -537,12 +544,12 @@ class Conapp extends Type {
      * @param {Tycon} tycon 
      */
     solveTycon(tycon) {
-        
         throw new Error(tycon.typeString + " cannot equal " + this.typeString);
     }
 
     /**
      * Solves conapp ~ conapp equality
+     * 
      * @param {Conapp} conapp 
      */
     solveConapp(conapp) {
@@ -590,6 +597,7 @@ class Forall extends Type {
 
     /**
      * @returns {Array<Tyvar>} Array of free type variables
+     *
      */
     freetyvars() {
         let generalized = this.tyvars;
@@ -652,7 +660,7 @@ class Expression {
 class ExpEvalBundle {
     /**
      * 
-     * @param {Value} val 
+     * @param {Object} val 
      * @param {Type} tau 
      * @param {Constraint} constraint 
      */
@@ -715,8 +723,7 @@ class Nil extends Literal {
         super();
         this.value = "()";
         this.list = [];
-        let tyvar = new Tyvar();
-        this.type = new Forall([tyvar], Type.listtype(tyvar))
+        this.type = Type.listtype(new Tyvar());
     }
      
 }
@@ -728,7 +735,7 @@ class Pair extends Literal {
         let fstPackage = this.val1.eval();
         let sndPackage = this.val2.eval();
         let bigConstraint = new And(new Equal(Type.listtype(fstPackage.tau), sndPackage.tau), new And(fstPackage.constraint, sndPackage.constraint))
-        return new ExpEvalBundle(this.value, sndPackage.tau, bigConstraint);
+        return new ExpEvalBundle(this.list, sndPackage.tau, bigConstraint);
     }
     /**
      * 
@@ -829,4 +836,5 @@ class LetStar extends Let {
     
 }
 
-// module.exports = {Constraint : Constraint, And : And, Equal : Equal, Type : Type, Tycon : Tycon, Trivial : Trivial};
+module.exports = {Constraint : Constraint, And : And, Equal : Equal, Type : Type, Tycon : Tycon, Trivial : Trivial,
+                  Parser: Parser};
