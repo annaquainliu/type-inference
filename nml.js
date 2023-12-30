@@ -84,7 +84,7 @@ class Parser {
         if (exp == "#t" || exp == "#f") {
             return new BoolV(exp);
         }
-        else if ((/^-?\d+$/.test(val)) {
+        else if (/^-?\d+$/.test(val)) {
             return new Num(exp);
         }
         return new Sym(exp);
