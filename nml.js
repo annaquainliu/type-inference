@@ -651,6 +651,15 @@ class Funty extends Conapp {
     }
 }
 
+class Environments {
+    static Rho = {};
+    static Gamma = {};
+
+    static reset() {
+        Environments.Rho = {};
+        Environments.Gamma = {};
+    }
+}
 /**
  * 
  * 
@@ -722,7 +731,7 @@ class Num extends Literal {
 class Bool extends Literal {
     constructor(bool) {
         super();
-        this.value = bool == "#t" ? true : false;
+        this.value = bool;
         this.type = Tycon.boolty;
     }
 
@@ -790,7 +799,7 @@ class If extends Expression {
      */
     eval() {
         let results = [condition.eval(), trueCase.eval(), falseCase.eval()];
-        let index = condition.eval() ? 1 : 2;
+        let index = results[0].value == "#t" ? 1 : 2;
         let cs = [new Equal(results[0].tau, Tycon.boolty), new Equal(results[1].tau, results[2].tau)];
         for (let i = 0; i < results.length; i++) {
             cs.push(results[i].constraint);
@@ -805,6 +814,20 @@ class Var extends Expression {
     constructor(name) {
         super();
         this.name = name;
+    }
+
+    eval() {
+        if (Definition.Rho[this.name] == null) {
+            throw new Error(this.name + " is not in Rho.");
+        }
+        let value = Definition.Rho[this.name];
+        let type_scheme = Environments.Gamma[this.name];
+        let tyvars = []
+        for (let tyvar of type_scheme.tyvars) {
+            tyvars.push(new Tyvar());
+        }
+        let newType = new Forall(tyvars, type_scheme.tau);
+        return new ExpEvalBundle(value.value, newType, new Trivial());
     }
 }
 
@@ -862,9 +885,6 @@ class LetStar extends Let {
 
 // abstract class
 class Definition {
-
-    static Gamma = {}
-    static Rho = {}
     exp;
     /**
      * @param {Expression} exp 
@@ -881,6 +901,10 @@ class Define extends Definition {
 }
 
 class Val extends Definition {
+
+}
+
+class TopLevel extends Definition {
 
 }
 
