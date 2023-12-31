@@ -7,8 +7,8 @@ function main() {
     const interpretButton = document.getElementById("interpret")
     interpretButton.addEventListener("click", () => {
         let parser = new Parser();
-        let exp = parser.tokenInput(input.value);
-        console.log(exp);
+        let def = parser.tokenInput(input.value);
+        console.log(def);
     });
 }
 
@@ -50,7 +50,22 @@ class Parser {
         }
         this.queue = this.queue.reverse();
         console.log(this.queue);
-        return this.tokenize(this.queue.pop());
+        return this.tokenDefinition(this.queue.pop());
+    }
+
+    tokenDefinition(def) {
+        if (def == "val") {
+            return new Val(this.queue.pop(), this.tokenize(this.queue.pop()));
+        }
+        else if (def == "val-rec") {
+            return new ValRec(this.queue.pop(), this.tokenize(this.queue.pop()));
+        }
+        else if (def == "define") {
+            return new Define(this.queue.pop(), this.tokenize(this.queue.pop()));
+        }   
+        else {
+            return new Val("it", this.tokenize(def));
+        }
     }
 
     /**
@@ -379,6 +394,23 @@ class Type {
       */
      solveTyvar(tyvar) {}
 
+     /**
+      * Substitutes a substitution into a type
+      * @param {Substitution} theta 
+      * @returns {Type}
+      */
+     tysubst(theta) {}
+
+     generalize(set) {
+        let ftvars = this.freetyvars();
+        let diff = [];
+        for (let ftvar of ftvars) {
+            if (!set.includes(ftvar)) {
+                diff.push(ftvar);
+            }
+        }
+        return new Forall(diff, this);
+     }
 }
 
 class Tycon extends Type {
@@ -445,7 +477,10 @@ class Tycon extends Type {
         map[tyvar.typeString] = this;
         return new Substitution(map);
     }
-
+    
+    tysubst(sub) {
+        return this;
+    }
 }
 
 class Tyvar extends Type {
@@ -511,6 +546,14 @@ class Tyvar extends Type {
         let map = {};
         map[this.typeString] = tyvar;
         return new Substitution(map);
+    }
+
+    tysubst(sub) {
+        let type = sub.mapping[this.typeString];
+        if (type == null) {
+            return self;
+        }
+        return type;
     }
 }
 
@@ -586,6 +629,14 @@ class Conapp extends Type {
         return tyvar.solveConapp(this);
     }
 
+    tysubst(sub) {
+        let newTypes = []
+        for (let type of this.types) {
+            newTypes.push(type.tysubst(sub));
+        }
+        return new Conapp(this.tycon, newTypes);
+    }
+
 }
 
 class Forall extends Type {
@@ -601,6 +652,9 @@ class Forall extends Type {
     }
 
     get typeString() {
+        if (this.tyvars.length == 0) {
+            return this.tau.typeString;
+        }
         let str = "(forall [";
         for (let i = 0; i < this.tyvars.length; i++) {
             str += this.tyvars[i].typeString + " ";
@@ -659,7 +713,17 @@ class Environments {
         Environments.Rho = {};
         Environments.Gamma = {};
     }
+
+    static freetyvars(Gamma) {
+        let freevars = [];
+        let taus = Object.values(Gamma);
+        for (let tau of taus) {
+            freevars = freevars.concat(tau.freetyvars());
+        }
+        return freevars;
+    }
 }
+
 /**
  * 
  * 
@@ -886,26 +950,57 @@ class LetStar extends Let {
 // abstract class
 class Definition {
     exp;
+    name;
+
     /**
+     * @param {String} name
      * @param {Expression} exp 
      */
-    constructor(exp) {
+    constructor(name, exp) {
+        if (!exp instanceof Expression) {
+            throw new Error(name + " is not assigned an expression!");
+        }
         this.exp = exp;
+        this.name = name;
     }
 
     eval() {}
+
 }
 
+class DefEvalBundle {
+
+    /**
+     * 
+     * @param {String} value 
+     * @param {Type} tau 
+     */
+    constructor(value, tau) {
+        this.value = value;
+        this.tau = tau;
+    }
+
+    toString() {
+        return this.value + " : " + this.tau.typeString;
+    }
+}
+
+// function types
 class Define extends Definition {
 
 }
 
+// val
 class Val extends Definition {
 
-}
-
-class TopLevel extends Definition {
-
+    eval() {
+        let bundle = this.exp.eval();
+        let theta = bundle.constraint.solve();
+        let newTau = bundle.tau.tysubst(theta);
+        let sigma = newTau.generalize(Environments.freetyvars(Environments.Gamma));
+        Environments.Gamma[this.name] = sigma;
+        return new DefEvalBundle(bundle.val, sigma);
+    }
 }
 
 class ValRec extends Definition {
@@ -913,4 +1008,4 @@ class ValRec extends Definition {
 }
 
 module.exports = {Constraint : Constraint, And : And, Equal : Equal, Type : Type, Tycon : Tycon, Trivial : Trivial,
-                  Parser: Parser};
+                  Parser: Parser, Forall : Forall, Conapp : Conapp, Tyvar : Tyvar, Substitution : Substitution};

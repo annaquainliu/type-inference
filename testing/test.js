@@ -1,4 +1,4 @@
-const {Constraint, And, Equal, Type, Tycon, Trivial, Parser} = require("../nml");
+const {Constraint, And, Equal, Type, Tycon, Trivial, Parser, Forall, Conapp, Tyvar, Substitution} = require("../nml");
 
 // let c = [new Equal(Tycon.boolty, Tycon.boolty), new Trivial(), new Equal(Tycon.intty, Tycon.boolty)];
 // let bigC = Constraint.conjoin(c);
@@ -24,5 +24,10 @@ let p = new Parser();
 // let exp = p.tokenInput("(letrec ([x (lambda (xsd) #t)][y (lambda (b) 1)]) #t)");
 // console.log(exp.bindings["x"]);
 
-// let exp = p.tokenInput("(let* ([x (lambda (y) 'ewr)]) x)")
-// console.log(exp);
+let exp = p.tokenInput("(let* ([x (lambda (y) 'ewr)]) x)")
+console.log(exp.eval());
+
+// let list = Type.listtype(new Tyvar());
+// list = list.tysubst(new Substitution({"'t0" : Tycon.intty}));
+// console.log(list);
+
