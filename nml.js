@@ -662,9 +662,6 @@ class Funty extends Conapp {
 // Expression Interface
 class Expression {
 
-    static Gamma = {}
-    static Rho = {}
-
     constructor() {}
     /**
      * @returns {ExpEvalBundle}
@@ -865,6 +862,9 @@ class LetStar extends Let {
 
 // abstract class
 class Definition {
+
+    static Gamma = {}
+    static Rho = {}
     exp;
     /**
      * @param {Expression} exp 
@@ -885,7 +885,7 @@ class Val extends Definition {
 }
 
 class ValRec extends Definition {
-    
+
 }
 
 module.exports = {Constraint : Constraint, And : And, Equal : Equal, Type : Type, Tycon : Tycon, Trivial : Trivial,
