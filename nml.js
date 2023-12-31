@@ -21,16 +21,35 @@ class Parser {
         input = input.replaceAll("[", "(")
         input = input.replaceAll("]", ")")
         input = input.split("(").join(" ").split(" ");
-        input = input.filter(word => word != "");
+        input = input.filter(word => word != "" && word != " ");
         input = input.map(item => item.toLowerCase());
+        this.queue = [];
         for (let i = 0; i < input.length; i++) {
             let word = input[i];
-            if (word.includes(")") || word.includes("'(")) {
-                let brackets = word.split("");
-                input = input.slice(0, i).concat(brackets).concat(input.slice(i + 1, input.length));
+            let lastIndex = 0;
+            let bracketStr = false;
+            if (!word.includes(")")) {
+                this.queue.push(word);
+                continue;
+            }
+            for (let j = 0; j < word.length; j++) {
+                if (word[j] == ")" && !bracketStr) {
+                    lastIndex = j;
+                    bracketStr = true;
+                }
+                if (bracketStr && word[j] != ")" || (bracketStr && j == word.length - 1)) {
+                    bracketStr = false;
+                    let brackets = Array(j - lastIndex + 1).fill(")");
+                    word = word.substring(0, lastIndex) + word.substring(j + 1);
+                    if (word != "" && word != " ") {
+                        this.queue.push(word);
+                    }
+                    this.queue = this.queue.concat(brackets);
+                }
             }
         }
-        this.queue = input.reverse();
+        this.queue = this.queue.reverse();
+        console.log(this.queue);
         return this.tokenize(this.queue.pop());
     }
 
@@ -42,7 +61,7 @@ class Parser {
      */
     tokenize(exp) {
         if (exp == "if") {
-            return new If(tokenize(this.queue.pop()), tokenize(this.queue.pop()), tokenize(this.queue.pop()));
+            return new If(this.tokenize(this.queue.pop()), this.tokenize(this.queue.pop()), this.tokenize(this.queue.pop()));
         }
         else if (exp == "begin") {
             let item = this.queue.pop();
@@ -69,15 +88,15 @@ class Parser {
             return this.tokenPair();
         }
         else if (exp == "#t" || exp == "#f") {
-            return new BoolV(exp);
+            return new Bool(exp);
         }
         else if (exp[0] == "'") {
             return new Sym(exp);
         }
         else if (/^-?\d+$/.test(exp)) { 
             return new Num(exp);
-        }
-        throw new Error(exp + " is not a valid expression!");
+        } 
+        return new Var(exp);
     }
    
     tokenPair() {
@@ -90,7 +109,7 @@ class Parser {
 
     tokenListLiterals(exp) {
         if (exp == "#t" || exp == "#f") {
-            return new BoolV(exp);
+            return new Bool(exp);
         }
         else if (/^-?\d+$/.test(exp)) {
             return new Num(exp);
@@ -101,7 +120,6 @@ class Parser {
     //  [')', 'x', ')', ')', '3', 'x', 'let']
     tokenLet() {
         let bindings = this.tokenLetBindings();
-        console.log(this.queue);
         let exp = this.tokenize(this.queue.pop());
         this.queue.pop(); // for last closing )
         return {"bindings": bindings, "exp" : exp};
@@ -127,7 +145,8 @@ class Parser {
             params.push(item);
             item = this.queue.pop();
         }
-        let exp = tokenize(this.queue.pop());
+        let exp = this.tokenize(this.queue.pop());
+        this.queue.pop(); // for ending )
         return new Lambda(params, exp);
     }
 
@@ -703,7 +722,7 @@ class Num extends Literal {
 
 }
 
-class BoolV extends Literal {
+class Bool extends Literal {
     constructor(bool) {
         super();
         this.value = bool == "#t" ? true : false;
@@ -763,6 +782,7 @@ class If extends Expression {
     falseCase;
 
     constructor(c, t, f) {
+        super();
         this.condition = c;
         this.trueCase = t;
         this.falseCase = f;
@@ -780,6 +800,14 @@ class If extends Expression {
         }
         let bigC = Constraint.conjoin(cs);
         return new ExpEvalBundle(results[index].val, results[index].tau, bigC);
+    }
+}
+
+class Var extends Expression {
+    name;
+    constructor(name) {
+        super();
+        this.name = name;
     }
 }
 
@@ -806,6 +834,7 @@ class Lambda extends Expression {
      * @param {Expression} exp 
      */
     constructor(params, exp) {
+        super();
         this.params = params;
         this.exp = exp;
     }
