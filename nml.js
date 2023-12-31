@@ -863,5 +863,30 @@ class LetStar extends Let {
     
 }
 
+// abstract class
+class Definition {
+    exp;
+    /**
+     * @param {Expression} exp 
+     */
+    constructor(exp) {
+        this.exp = exp;
+    }
+
+    eval() {}
+}
+
+class Define extends Definition {
+
+}
+
+class Val extends Definition {
+
+}
+
+class ValRec extends Definition {
+    
+}
+
 module.exports = {Constraint : Constraint, And : And, Equal : Equal, Type : Type, Tycon : Tycon, Trivial : Trivial,
                   Parser: Parser};
