@@ -15,42 +15,34 @@ function main() {
 
 class Parser {
     queue = [];
-
+    keywords = ["let", "let*", "letrec", "val-rec", "if", "begin", "lambda"];
     interpret(value) {
         let def = this.tokenInput(value);
         return def.eval({}, {});
     }
 
     tokenInput(input) {
-        input = input.replaceAll("[", "(")
-        input = input.replaceAll("]", ")")
-        input = input.split("(").join(" ").split(" ");
-        input = input.filter(word => word != "" && word != " ");
-        input = input.map(item => item.toLowerCase());
+        input = input.toLowerCase();
+        input = input.replaceAll("[", "(");
+        input = input.replaceAll("]", ")");
         this.queue = [];
+        let str = "";
         for (let i = 0; i < input.length; i++) {
-            let word = input[i];
-            let lastIndex = 0;
-            let bracketStr = false;
-            if (!word.includes(")")) {
-                this.queue.push(word);
-                continue;
-            }
-            for (let j = 0; j < word.length; j++) {
-                if (word[j] == ")" && !bracketStr) {
-                    lastIndex = j;
-                    bracketStr = true;
+            if (input[i] == "(" || input[i] == ")" || input[i] == " ") {
+                if (str != "") {
+                    this.queue.push(str);
                 }
-                if (bracketStr && word[j] != ")" || (bracketStr && j == word.length - 1)) {
-                    bracketStr = false;
-                    let brackets = Array(j - lastIndex + 1).fill(")");
-                    word = word.substring(0, lastIndex) + word.substring(j + 1);
-                    if (word != "" && word != " ") {
-                        this.queue.push(word);
-                    }
-                    this.queue = this.queue.concat(brackets);
+                if (input[i] != " ") {
+                    this.queue.push(input[i]);
                 }
+                str = ""
             }
+            else {
+                str += input[i];
+            }
+        }
+        if (this.queue[this.queue.length - 1] != str && str != "" && str != " ") {
+            this.queue.push(str);
         }
         this.queue = this.queue.reverse();
         return this.tokenDefinition(this.queue.pop());
@@ -78,7 +70,21 @@ class Parser {
      * @returns {Expression} 
      */
     tokenize(exp) {
-        if (exp == "if") {
+        if (exp == "(") {
+            let item = this.queue.pop();
+            if (this.keywords.includes(item)) {
+                return this.tokenize(item);
+            }
+            let fun = this.tokenize(item);
+            let args = [];
+            item = this.queue.pop();
+            while (item != ")") {
+                args.push(this.tokenize(item));
+                item = this.queue.pop();
+            }
+            return new Apply(fun, args);
+        }
+        else if (exp == "if") {
             return new If(this.tokenize(this.queue.pop()), this.tokenize(this.queue.pop()), this.tokenize(this.queue.pop()));
         }
         else if (exp == "begin") {
@@ -103,6 +109,7 @@ class Parser {
             return this.tokenLambda();
         }
         else if (exp == "'") { // must be a list
+            this.queue.pop();
             return this.tokenPair();
         }
         else if (exp == "#t" || exp == "#f") {
@@ -132,11 +139,15 @@ class Parser {
         else if (/^-?\d+$/.test(exp)) {
             return new Num(exp);
         }
+        else if (exp == "(") {
+            return this.tokenPair();
+        }
         return new Sym(exp);
     }
 
     //  [')', 'x', ')', ')', '3', 'x', 'let']
     tokenLet() {
+        this.queue.pop(); // for (
         let bindings = this.tokenLetBindings();
         let exp = this.tokenize(this.queue.pop());
         this.queue.pop(); // for last closing )
@@ -148,6 +159,7 @@ class Parser {
             this.queue.pop(); // for )
             return {};
         }
+        this.queue.pop(); // for (
         let name = this.queue.pop();
         let exp = this.tokenize(this.queue.pop());
         this.queue.pop(); // for closing )
@@ -158,6 +170,7 @@ class Parser {
 
     tokenLambda() {
         let params = [];
+        this.queue.pop(); // opening (
         let item = this.queue.pop();
         while (item != ")") {
             params.push(item);
@@ -165,7 +178,6 @@ class Parser {
         }
         let exp = this.tokenize(this.queue.pop());
         this.queue.pop(); // for ending )
-        
         return new Lambda(params, exp);
     }
 
@@ -753,6 +765,20 @@ class ExpEvalBundle {
         this.val = val;
         this.tau = tau;
         this.constraint = constraint;
+    }
+}
+
+class Apply extends Expression {
+    exp; // function var or lambda
+    args;
+    /**
+     * @param {Expression} exp 
+     * @param {Array<Expression>} args 
+     */
+    constructor(exp, args) {
+        super();
+        this.exp = exp;
+        this.args = args;
     }
 }
 
