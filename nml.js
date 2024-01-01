@@ -824,7 +824,19 @@ class Apply extends Expression {
     }
 
     typeCheck(Gamma) {
-
+        let funtyAndC = this.exp.typeCheck(Gamma);
+        let taus = [funtyAndC.tau];
+        let constraints = [funtyAndC.constraint];
+        for (let arg of this.args) {
+            let tyC = arg.typeCheck(Gamma);
+            taus.push(tyC.tau);
+            constraints.push(tyC.constraint);
+        }
+        let tyvar = new Tyvar();
+        let funty = new Funty(taus.slice(1), tyvar);
+        constraints.push(new Equal(taus[0].tau, funty));
+        let bigC = Constraint.conjoin(constraints);
+        return new TypeBundle(tyvar, bigC);
     }
 }
 
@@ -999,7 +1011,23 @@ class Begin extends Expression {
     }
 
     eval(Rho) {
+        let lastResult;
+        for (let e of this.es) {
+            lastResult = e.eval(Rho);
+        }
+        return lastResult;
+    }
 
+    typeCheck(Gamma) {
+        let lastTau;
+        let constraints = [];
+        for (let e of this.es) {
+            let tauBundle = e.typeCheck(Gamma);
+            lastTau = tauBundle.tau;
+            constraints.push(tauBundle.constraint);
+        }
+        let bigC = Constraint.conjoin(constraints);
+        return new TypeBundle(lastTau, bigC);
     }
 }
 

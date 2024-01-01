@@ -46,6 +46,7 @@ let p = new Parser();
 // console.log(p.interpret("'(1 2 45)").toString());
 // console.log(p.interpret("'((1 2) (3 4))").toString());
 // console.log(p.interpret("(if #t '() '(12 3))").toString());
+console.log(p.interpret("'((1 2) (3 asds))").toString());
 // try {
 //     console.log(p.interpret("(if #t '(#f) '(12 3))").toString());
 // }
