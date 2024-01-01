@@ -748,7 +748,7 @@ class Expression {
 
     /**
      * @param {Map<String, Type>} Gamma : Mapping of names to types
-     * @param {Map<String, String>} Rho : Mapping of names to values
+     * @param {Map<String, Expression>} Rho : Mapping of names to values
      * @returns {ExpEvalBundle}
      */
     eval(Gamma, Rho) {}
@@ -760,11 +760,13 @@ class ExpEvalBundle {
      * @param {Object} val 
      * @param {Type} tau 
      * @param {Constraint} constraint 
+     * @param {Expression} exp : Can either be a literal or lambda
      */
-    constructor(val, tau, constraint) {
+    constructor(val, tau, constraint, exp) {
         this.val = val;
         this.tau = tau;
         this.constraint = constraint;
+        this.exp = exp;
     }
 }
 
@@ -779,6 +781,12 @@ class Apply extends Expression {
         super();
         this.exp = exp;
         this.args = args;
+    }
+
+    eval(Gamma, Rho) {
+        let lambda = exp.eval(Gamma, Rho);
+        let results = [];
+
     }
 }
 
@@ -796,7 +804,7 @@ class Literal extends Expression {
     }
     // inherited methods for all subclasses
     eval(Gamma, Rho) {
-        return new ExpEvalBundle(this.value, this.type, this.constraint);
+        return new ExpEvalBundle(this.value, this.type, this.constraint, this);
     }
 }
 
@@ -846,7 +854,7 @@ class Pair extends Literal {
         let fstPackage = this.val1.eval(Gamma, Rho);
         let sndPackage = this.val2.eval(Gamma, Rho);
         let bigConstraint = new And(new Equal(Type.listtype(fstPackage.tau), sndPackage.tau), new And(fstPackage.constraint, sndPackage.constraint))
-        return new ExpEvalBundle(this.value, sndPackage.tau, bigConstraint);
+        return new ExpEvalBundle(this.value, sndPackage.tau, bigConstraint, this);
     }
     /**
      * 
@@ -895,7 +903,7 @@ class If extends Expression {
             cs.push(results[i].constraint);
         }
         let bigC = Constraint.conjoin(cs);
-        return new ExpEvalBundle(results[index].val, results[index].tau, bigC);
+        return new ExpEvalBundle(results[index].val, results[index].tau, bigC, results[index].exp);
     }
 }
 
@@ -917,7 +925,7 @@ class Var extends Expression {
             tyvars.push(new Tyvar());
         }
         let newType = new Forall(tyvars, type_scheme.tau);
-        return new ExpEvalBundle(value.value, newType, new Trivial());
+        return new ExpEvalBundle(value.value, newType, new Trivial(), value);
     }
 }
 
@@ -942,7 +950,7 @@ class Lambda extends Expression {
 
     params;
     exp;
-
+    value;
     /**
      * @param {Array<String>} params 
      * @param {Expression} exp 
@@ -951,6 +959,7 @@ class Lambda extends Expression {
         super();
         this.params = params;
         this.exp = exp;
+        this.value = "<function>";
     }
 
     eval(Gamma, Rho) {
@@ -1040,6 +1049,7 @@ class Val extends Definition {
         let newTau = bundle.tau.tysubst(theta);
         let sigma = newTau.generalize(Environments.freetyvars(Gamma));
         Gamma[this.name] = sigma;
+        Rho[this.name] = bundle.exp;
         return new DefEvalBundle(bundle.val, sigma);
     }
 }
