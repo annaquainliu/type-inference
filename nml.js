@@ -806,11 +806,26 @@ class Apply extends Expression {
         this.args = args;
     }
 
-    eval(Gamma, Rho) {
-        
+    eval(Rho) {
+        let lambdaBundle = this.exp.eval(Rho); 
+        if (!lambdaBundle.exp instanceof Lambda) {
+            throw new Error("Cannot apply a non-function value.");
+        }
+        let extendedClosure = lambdaBundle.exp.closure;
+        let paramNames = lambdaBundle.exp.params;
+        if (this.args.length != paramNames.length) {
+            throw new Error("Mistmatch amount of arguments and parameters");
+        }
+        for (let i in this.args) {
+            extendedClosure[paramNames[i]] = this.args[i].eval(Rho)
+        }
+        let result = lambdaBundle.exp.body.eval(extendedClosure);
+        return result;
     }
 
-    typeCheck(Gamma) {}
+    typeCheck(Gamma) {
+
+    }
 }
 
 // abstract class
@@ -991,7 +1006,7 @@ class Begin extends Expression {
 class Lambda extends Expression {
 
     params;
-    exp;
+    body;
     value;
     closure;
     /**
@@ -1001,14 +1016,14 @@ class Lambda extends Expression {
     constructor(params, exp) {
         super();
         this.params = params;
-        this.exp = exp;
+        this.body = exp;
         this.value = "<function>";
         this.closure = {};
     }
 
     eval(Rho) {
         this.closure = Environments.copy(Rho);
-        return new ExpEvalBundle(this.value, self);
+        return new ExpEvalBundle(this.value, this);
     }
 
     typeCheck(Gamma) {
@@ -1019,7 +1034,7 @@ class Lambda extends Expression {
             newGamma[param] = new Forall([], tyvar);
             tyvars.push(tyvar);
         }
-        let body = this.exp.typeCheck(newGamma);
+        let body = this.body.typeCheck(newGamma);
         return new TypeBundle(new Funty(tyvars, body.tau), body.constraint);
     }
 }
