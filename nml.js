@@ -7,8 +7,7 @@ function main() {
     const interpretButton = document.getElementById("interpret")
     interpretButton.addEventListener("click", () => {
         let parser = new Parser();
-        let def = parser.tokenInput(input.value);
-        console.log(def);
+        parser.interpret(input.value);
     });
 }
 
@@ -16,6 +15,11 @@ function main() {
 
 class Parser {
     queue = [];
+
+    interpret(value) {
+        let def = this.tokenInput(value);
+        return def.eval({}, {});
+    }
 
     tokenInput(input) {
         input = input.replaceAll("[", "(")
@@ -49,7 +53,6 @@ class Parser {
             }
         }
         this.queue = this.queue.reverse();
-        console.log(this.queue);
         return this.tokenDefinition(this.queue.pop());
     }
 
@@ -162,6 +165,7 @@ class Parser {
         }
         let exp = this.tokenize(this.queue.pop());
         this.queue.pop(); // for ending )
+        
         return new Lambda(params, exp);
     }
 
@@ -551,7 +555,7 @@ class Tyvar extends Type {
     tysubst(sub) {
         let type = sub.mapping[this.typeString];
         if (type == null) {
-            return self;
+            return this;
         }
         return type;
     }
@@ -706,13 +710,6 @@ class Funty extends Conapp {
 }
 
 class Environments {
-    static Rho = {};
-    static Gamma = {};
-
-    static reset() {
-        Environments.Rho = {};
-        Environments.Gamma = {};
-    }
 
     static freetyvars(Gamma) {
         let freevars = [];
@@ -736,10 +733,13 @@ class Environments {
 class Expression {
 
     constructor() {}
+
     /**
+     * @param {Map<String, Type>} Gamma : Mapping of names to types
+     * @param {Map<String, String>} Rho : Mapping of names to values
      * @returns {ExpEvalBundle}
      */
-    eval() {}
+    eval(Gamma, Rho) {}
 }
 
 class ExpEvalBundle {
@@ -769,7 +769,7 @@ class Literal extends Expression {
         this.constraint = new Trivial();;
     }
     // inherited methods for all subclasses
-    eval() {
+    eval(Gamma, Rho) {
         return new ExpEvalBundle(this.value, this.type, this.constraint);
     }
 }
@@ -816,11 +816,11 @@ class Nil extends Literal {
 /** FOR LISTS */
 class Pair extends Literal {
 
-    eval() {
-        let fstPackage = this.val1.eval();
-        let sndPackage = this.val2.eval();
+    eval(Gamma, Rho) {
+        let fstPackage = this.val1.eval(Gamma, Rho);
+        let sndPackage = this.val2.eval(Gamma, Rho);
         let bigConstraint = new And(new Equal(Type.listtype(fstPackage.tau), sndPackage.tau), new And(fstPackage.constraint, sndPackage.constraint))
-        return new ExpEvalBundle(this.list, sndPackage.tau, bigConstraint);
+        return new ExpEvalBundle(this.value, sndPackage.tau, bigConstraint);
     }
     /**
      * 
@@ -861,9 +861,9 @@ class If extends Expression {
     /**
      * @returns {ExpEvalBundle}
      */
-    eval() {
-        let results = [condition.eval(), trueCase.eval(), falseCase.eval()];
-        let index = results[0].value == "#t" ? 1 : 2;
+    eval(Gamma, Rho) {
+        let results = [this.condition.eval(Gamma, Rho), this.trueCase.eval(Gamma, Rho), this.falseCase.eval(Gamma, Rho)];
+        let index = results[0].val == "#t" ? 1 : 2;
         let cs = [new Equal(results[0].tau, Tycon.boolty), new Equal(results[1].tau, results[2].tau)];
         for (let i = 0; i < results.length; i++) {
             cs.push(results[i].constraint);
@@ -880,12 +880,12 @@ class Var extends Expression {
         this.name = name;
     }
 
-    eval() {
-        if (Definition.Rho[this.name] == null) {
+    eval(Gamma, Rho) {
+        if (Rho[this.name] == null) {
             throw new Error(this.name + " is not in Rho.");
         }
-        let value = Definition.Rho[this.name];
-        let type_scheme = Environments.Gamma[this.name];
+        let value = Rho[this.name];
+        let type_scheme = Gamma[this.name];
         let tyvars = []
         for (let tyvar of type_scheme.tyvars) {
             tyvars.push(new Tyvar());
@@ -906,6 +906,10 @@ class Begin extends Expression {
         super();
         this.es = es;
     }
+
+    eval(Gamma, Rho) {
+
+    }
 }
 
 class Lambda extends Expression {
@@ -921,6 +925,17 @@ class Lambda extends Expression {
         super();
         this.params = params;
         this.exp = exp;
+    }
+
+    eval(Gamma, Rho) {
+        let tyvars = []
+        for (let param of this.params) {
+            let tyvar = new Tyvar();
+            Gamma[param] = new Forall([], tyvar);
+            tyvars.push(tyvar);
+        }
+        this.exp.eval(Gamma, Rho);
+    
     }
 }
 
@@ -964,7 +979,7 @@ class Definition {
         this.name = name;
     }
 
-    eval() {}
+    eval(Gamma, Rho) {}
 
 }
 
@@ -993,12 +1008,12 @@ class Define extends Definition {
 // val
 class Val extends Definition {
 
-    eval() {
-        let bundle = this.exp.eval();
+    eval(Gamma, Rho) {
+        let bundle = this.exp.eval(Gamma, Rho);
         let theta = bundle.constraint.solve();
         let newTau = bundle.tau.tysubst(theta);
-        let sigma = newTau.generalize(Environments.freetyvars(Environments.Gamma));
-        Environments.Gamma[this.name] = sigma;
+        let sigma = newTau.generalize(Environments.freetyvars(Gamma));
+        Gamma[this.name] = sigma;
         return new DefEvalBundle(bundle.val, sigma);
     }
 }
