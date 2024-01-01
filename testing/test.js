@@ -38,16 +38,28 @@ let p = new Parser();
 // let bundle = p.interpret("'(23 7 4 5)");
 // console.log(bundle.toString());
 
-let bundle = p.interpret("'()");
-console.log(bundle.toString());
-console.log(p.interpret("'dsfds").toString());
-console.log(p.interpret("#f").toString());
-console.log(p.interpret("345").toString());
-console.log(p.interpret("'(1 2 45)").toString());
-console.log(p.interpret("(if #t '() '(12 3))").toString());
-try {
-    console.log(p.interpret("(if #t '(#f) '(12 3))").toString());
-}
-catch(e) {}
-console.log(p.tokenInput("(begin ((lambda (x) 3) 3))"));
-console.log(p.tokenInput("(begin (lambda (x) 3) 3)"));
+// let bundle = p.interpret("'()");
+// console.log(bundle.toString());
+// console.log(p.interpret("'dsfds").toString());
+// console.log(p.interpret("#f").toString());
+// console.log(p.interpret("345").toString());
+// console.log(p.interpret("'(1 2 45)").toString());
+// console.log(p.interpret("'((1 2) (3 4))").toString());
+// console.log(p.interpret("(if #t '() '(12 3))").toString());
+// try {
+//     console.log(p.interpret("(if #t '(#f) '(12 3))").toString());
+// }
+// catch(e) {}
+// console.log(p.tokenInput("(begin ((lambda (x) 3) 3))"));
+// console.log(p.tokenInput("(begin (lambda (x) 3) 3)"));
+
+/**
+-> (val hello 3) 
+3 : int
+-> (val hi (lambda () hello))
+hi : ( -> int)
+-> (val hello 4)
+4 : int
+-> (hi)
+3 : int
+ */

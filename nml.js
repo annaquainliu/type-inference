@@ -208,7 +208,7 @@ class Substitution {
 
     /**
      * compose : Combine both substitutions
-     * @param {Subtitution} theta1 
+     * @param {Substitution} theta1 
      * @param {Substitution} theta2 
      * @returns {Substitution} this
      */
@@ -226,6 +226,17 @@ class Substitution {
      */
     constructor(mapping) {
         this.mapping = mapping;
+    }
+
+    toString() {
+        let str = "(";
+        let keys = Object.keys(this.mapping);
+        for (let key of keys) {
+            str += key + " |--> " + this.mapping[key].typeString + ", "
+        }
+        str = str.substring(0, str.length - 2);
+        str += ")"
+        return str;
     }
 }
 
@@ -350,15 +361,8 @@ class Equal extends Constraint {
      * @param {Substitution} sub 
      */
     consubst(sub) {
-        let keys = Object.keys(sub.mapping);
-        for (let key of keys) {
-            if (this.tau1.typeString == key) {
-                this.tau1 = sub.mapping[key];
-            }
-            if (this.tau2.typeString == key) {
-                this.tau2 = sub.mapping[key];
-            }
-        }
+        this.tau1 = this.tau1.tysubst(sub);
+        this.tau2 = this.tau2.tysubst(sub);
         return this;
     }
 }
@@ -632,7 +636,7 @@ class Conapp extends Type {
         }
         let bigConstraint = new Equal(this.tycon, conapp.tycon);
         for (let i = 0; i < conapp.types.length; i++) {
-            bigConstraint = new And(bigConstraint, new Equal(conapp.types[i], this.types[i]));
+            bigConstraint = new And(new Equal(conapp.types[i], this.types[i]), bigConstraint);
         }
         return bigConstraint.solve();
     }
@@ -646,11 +650,11 @@ class Conapp extends Type {
     }
 
     tysubst(sub) {
-        let newTypes = []
+        let newTypes = [];
         for (let type of this.types) {
             newTypes.push(type.tysubst(sub));
         }
-        return new Conapp(this.tycon, newTypes);
+        return new Conapp(this.tycon.tysubst(sub), newTypes);
     }
 
 }
@@ -731,6 +735,10 @@ class Environments {
         }
         return freevars;
     }
+
+    static copy(environment) {
+        return JSON.parse(JSON.stringify(environment));
+    }
 }
 
 /**
@@ -747,25 +755,40 @@ class Expression {
     constructor() {}
 
     /**
-     * @param {Map<String, Type>} Gamma : Mapping of names to types
+     * Evaluates the expression
      * @param {Map<String, Expression>} Rho : Mapping of names to values
      * @returns {ExpEvalBundle}
      */
-    eval(Gamma, Rho) {}
+    eval(Rho) {}
+
+    /**
+     * Only type checks the expression, without evaluation
+     * @param {Map<String, Type>} Gamma 
+     * @returns {TypeBundle} 
+     */
+    typeCheck(Gamma) {}
+}
+
+class TypeBundle {
+
+    /**
+     * @param {Type} tau 
+     * @param {Constraint} constraint 
+     */
+    constructor(tau, constraint) {
+        this.tau = tau;
+        this.constraint = constraint;
+    }
 }
 
 class ExpEvalBundle {
+
     /**
-     * 
-     * @param {Object} val 
-     * @param {Type} tau 
-     * @param {Constraint} constraint 
+     * @param {Object} val
      * @param {Expression} exp : Can either be a literal or lambda
      */
-    constructor(val, tau, constraint, exp) {
+    constructor(val,  exp) {
         this.val = val;
-        this.tau = tau;
-        this.constraint = constraint;
         this.exp = exp;
     }
 }
@@ -784,10 +807,10 @@ class Apply extends Expression {
     }
 
     eval(Gamma, Rho) {
-        let lambda = exp.eval(Gamma, Rho);
-        let results = [];
-
+        
     }
+
+    typeCheck(Gamma) {}
 }
 
 // abstract class
@@ -803,8 +826,12 @@ class Literal extends Expression {
         this.constraint = new Trivial();;
     }
     // inherited methods for all subclasses
-    eval(Gamma, Rho) {
-        return new ExpEvalBundle(this.value, this.type, this.constraint, this);
+    eval(Rho) {
+        return new ExpEvalBundle(this.value, this);
+    }
+
+    typeCheck(Gamma) {
+        return new TypeBundle(this.type, this.constraint);
     }
 }
 
@@ -850,11 +877,15 @@ class Nil extends Literal {
 /** FOR LISTS */
 class Pair extends Literal {
 
-    eval(Gamma, Rho) {
-        let fstPackage = this.val1.eval(Gamma, Rho);
-        let sndPackage = this.val2.eval(Gamma, Rho);
-        let bigConstraint = new And(new Equal(Type.listtype(fstPackage.tau), sndPackage.tau), new And(fstPackage.constraint, sndPackage.constraint))
-        return new ExpEvalBundle(this.value, sndPackage.tau, bigConstraint, this);
+    eval(Rho) {
+        return new ExpEvalBundle(this.value, this);
+    }
+
+    typeCheck(Gamma) {
+        let fst = this.val1.typeCheck(Gamma);
+        let snd = this.val2.typeCheck(Gamma);
+        let bigConstraint = new And(new And(fst.constraint, snd.constraint), new Equal(Type.listtype(fst.tau), snd.tau))
+        return new TypeBundle(snd.tau, bigConstraint);
     }
     /**
      * 
@@ -895,15 +926,22 @@ class If extends Expression {
     /**
      * @returns {ExpEvalBundle}
      */
-    eval(Gamma, Rho) {
-        let results = [this.condition.eval(Gamma, Rho), this.trueCase.eval(Gamma, Rho), this.falseCase.eval(Gamma, Rho)];
+    eval(Rho) {
+        let results = [this.condition.eval(Rho), this.trueCase.eval(Rho), this.falseCase.eval(Rho)];
         let index = results[0].val == "#t" ? 1 : 2;
+        return new ExpEvalBundle(results[index].val, results[index].exp);
+    }
+
+    typeCheck(Gamma) {
+        let results = [this.condition.typeCheck(Gamma), 
+                        this.trueCase.typeCheck(Gamma), 
+                        this.falseCase.typeCheck(Gamma)];
         let cs = [new Equal(results[0].tau, Tycon.boolty), new Equal(results[1].tau, results[2].tau)];
         for (let i = 0; i < results.length; i++) {
             cs.push(results[i].constraint);
         }
         let bigC = Constraint.conjoin(cs);
-        return new ExpEvalBundle(results[index].val, results[index].tau, bigC, results[index].exp);
+        return new TypeBundle(results[1].tau, bigC);
     }
 }
 
@@ -914,18 +952,22 @@ class Var extends Expression {
         this.name = name;
     }
 
-    eval(Gamma, Rho) {
+    eval(Rho) {
         if (Rho[this.name] == null) {
             throw new Error(this.name + " is not in Rho.");
         }
         let value = Rho[this.name];
+        return new ExpEvalBundle(value.value, value);
+    }
+
+    typeCheck(Gamma) {
         let type_scheme = Gamma[this.name];
         let tyvars = []
         for (let tyvar of type_scheme.tyvars) {
             tyvars.push(new Tyvar());
         }
         let newType = new Forall(tyvars, type_scheme.tau);
-        return new ExpEvalBundle(value.value, newType, new Trivial(), value);
+        return new TypeBundle(newType, new Trivial());
     }
 }
 
@@ -941,7 +983,7 @@ class Begin extends Expression {
         this.es = es;
     }
 
-    eval(Gamma, Rho) {
+    eval(Rho) {
 
     }
 }
@@ -951,6 +993,7 @@ class Lambda extends Expression {
     params;
     exp;
     value;
+    closure;
     /**
      * @param {Array<String>} params 
      * @param {Expression} exp 
@@ -960,17 +1003,24 @@ class Lambda extends Expression {
         this.params = params;
         this.exp = exp;
         this.value = "<function>";
+        this.closure = {};
     }
 
-    eval(Gamma, Rho) {
+    eval(Rho) {
+        this.closure = Environments.copy(Rho);
+        return new ExpEvalBundle(this.value, self);
+    }
+
+    typeCheck(Gamma) {
+        let newGamma = Environments.copy(Gamma);
         let tyvars = []
         for (let param of this.params) {
             let tyvar = new Tyvar();
-            Gamma[param] = new Forall([], tyvar);
+            newGamma[param] = new Forall([], tyvar);
             tyvars.push(tyvar);
         }
-        this.exp.eval(Gamma, Rho);
-    
+        let body = this.exp.typeCheck(newGamma);
+        return new TypeBundle(new Funty(tyvars, body.tau), body.constraint);
     }
 }
 
@@ -1044,13 +1094,14 @@ class Define extends Definition {
 class Val extends Definition {
 
     eval(Gamma, Rho) {
-        let bundle = this.exp.eval(Gamma, Rho);
-        let theta = bundle.constraint.solve();
-        let newTau = bundle.tau.tysubst(theta);
+        let value = this.exp.eval(Rho);
+        let type = this.exp.typeCheck(Gamma);
+        let theta = type.constraint.solve();
+        let newTau = type.tau.tysubst(theta);
         let sigma = newTau.generalize(Environments.freetyvars(Gamma));
         Gamma[this.name] = sigma;
-        Rho[this.name] = bundle.exp;
-        return new DefEvalBundle(bundle.val, sigma);
+        Rho[this.name] = value.exp;
+        return new DefEvalBundle(value.val, sigma);
     }
 }
 
