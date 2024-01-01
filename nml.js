@@ -423,13 +423,17 @@ class Type {
 
      generalize(set) {
         let ftvars = this.freetyvars();
-        let diff = [];
+        let diff = new Set();
         for (let ftvar of ftvars) {
-            if (!set.includes(ftvar)) {
-                diff.push(ftvar);
+            if (!set.includes(ftvar) && !diff.has(ftvar)) {
+                diff.add(ftvar);
             }
         }
-        return new Forall(diff, this);
+        let generalized = [];
+        for (let ftvar of diff) {
+            generalized.push(ftvar);
+        }
+        return new Forall(generalized, this);
      }
 }
 
@@ -700,6 +704,10 @@ class Forall extends Type {
         return diff;
     }
 
+    tysubst(sub) {
+        return this.tau.tysubst(sub);
+    }
+
 }
 
 class Funty extends Conapp {
@@ -722,6 +730,11 @@ class Funty extends Conapp {
         }
         str += "-> " + this.tau.typeString + ")";
         return str;
+    }
+
+    tysubst(sub) {
+        let subTau = super.tysubst(sub);
+        return new Funty(subTau.types[0].types, subTau.types[1]);
     }
 }
 
