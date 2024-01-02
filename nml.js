@@ -1157,10 +1157,10 @@ class Let extends Expression {
             constraints.push(typeBundle.constraint);
         }
         let c = Constraint.conjoin(constraints);
-        return Let.solveRestWithC(c, Gamma);
+        return this.solveRestWithC(c, Gamma, types, names);
     }
 
-    static solveRestWithC(c, Gamma) {
+    solveRestWithC(c, Gamma, types, names, exp) {
         let theta = c.solve();
         let domTheta = Object.keys(theta);
         let freetyvars = Environments.freetyvars(Gamma);
@@ -1205,7 +1205,7 @@ class Letrec extends Let {
         let newRef = {};
         let newRho = Environments.copy(Rho);
         for (let name of names) {
-            newRho[name] = this.bindings[name].eval(newRef);
+            newRho[name] = this.bindings[name].eval(newRef).exp;
         }
         newRef = newRho;
         return this.exp.eval(newRho);
@@ -1224,7 +1224,7 @@ class Letrec extends Let {
         let taus = [];
         let constraints = [];
         for (let exp of exps) {
-            let tauAndC = exp.eval(gammaPrime);
+            let tauAndC = exp.typeCheck(gammaPrime);
             taus.push(tauAndC.tau);
             constraints.push(tauAndC.constraint);
         }
@@ -1232,7 +1232,7 @@ class Letrec extends Let {
             constraints.push(new Equal(taus[i], tyvars[i]));
         }
         let constraint = Constraint.conjoin(constraints);
-        return Let.solveRestWithC(constraint, Gamma);
+        return this.solveRestWithC(constraint, Gamma, taus, names);
     }
 }
 
