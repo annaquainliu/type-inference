@@ -1253,7 +1253,9 @@ class LetStar extends Let {
         if (Object.keys(this.bindings).length == 0) {
             return this.exp.typeCheck(Gamma);
         }
-        let newLet = new Let({"bindings" : fst, "exp" : new LetStar()})
+        let newLet = new Let({"bindings" : [this.bindings[0]], 
+                              "exp" : new LetStar({"bindings" : this.bindings.slice(1), "exp" : this.exp})});
+        return newLet.typeCheck(Gamma);
     }
 }
 
