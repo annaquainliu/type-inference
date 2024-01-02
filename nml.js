@@ -85,7 +85,9 @@ class Parser {
             return new Apply(fun, args);
         }
         else if (exp == "if") {
-            return new If(this.tokenize(this.queue.pop()), this.tokenize(this.queue.pop()), this.tokenize(this.queue.pop()));
+            let exp = new If(this.tokenize(this.queue.pop()), this.tokenize(this.queue.pop()), this.tokenize(this.queue.pop()));
+            this.queue.pop();
+            return exp;
         }
         else if (exp == "begin") {
             let item = this.queue.pop();
@@ -155,17 +157,16 @@ class Parser {
     }
 
     tokenLetBindings() {
-        if (this.queue[this.queue.length - 1] == ")") {
-            this.queue.pop(); // for )
-            return {};
+        let item = this.queue.pop();
+        let bindings = {};
+        while (item != ")") {
+            let name = this.queue.pop();
+            let exp = this.tokenize(this.queue.pop());
+            bindings[name] = exp;
+            this.queue.pop(); // for opening )
+            item = this.queue.pop();
         }
-        this.queue.pop(); // for (
-        let name = this.queue.pop();
-        let exp = this.tokenize(this.queue.pop());
-        this.queue.pop(); // for closing )
-        let obj = {};
-        obj[name] = exp;
-        return Object.assign(this.tokenLetBindings(), obj);
+        return bindings;
     }
 
     tokenLambda() {
@@ -1143,7 +1144,7 @@ class Let extends Expression {
         for (let name of names) {
             newRho[name] = this.bindings[name].eval(Rho);
         }
-        return this.body.eval(newRho);
+        return this.exp.eval(newRho);
     }
 
     typeCheck(Gamma) {
@@ -1156,6 +1157,10 @@ class Let extends Expression {
             constraints.push(typeBundle.constraint);
         }
         let c = Constraint.conjoin(constraints);
+        return Let.solveRestWithC(c, Gamma);
+    }
+
+    static solveRestWithC(c, Gamma) {
         let theta = c.solve();
         let domTheta = Object.keys(theta);
         let freetyvars = Environments.freetyvars(Gamma);
@@ -1181,13 +1186,54 @@ class Let extends Expression {
         for (let i in names) {
             extendedGamma[names[i]] = sigmas[i];
         }
-        let tauBundle = this.exp.eval(extendedGamma);
+        let tauBundle = this.exp.typeCheck(extendedGamma);
         return new TypeBundle(tauBundle.tau, new Equal(tauBundle.constraint, cPrime));
-    }   
+    }
 }
 
 class Letrec extends Let {
 
+    eval(Rho) {
+        //parsing
+        let exps = Object.values(this.bindings);
+        let names = Object.keys(this.bindings);
+        for (let exp in exps) {
+            if (!exp instanceof Lambda) {
+                throw new Error("Expression bound in letrec binding is not a lambda.");
+            }
+        }
+        let newRef = {};
+        let newRho = Environments.copy(Rho);
+        for (let name of names) {
+            newRho[name] = this.bindings[name].eval(newRef);
+        }
+        newRef = newRho;
+        return this.exp.eval(newRho);
+    }
+
+    typeCheck(Gamma) {
+        let tyvars = []; // distinct and fresh type variables
+        let names = Object.keys(this.bindings);
+        let exps = Object.values(this.bindings);
+        let gammaPrime = Environments.copy(Gamma);
+        for (let name of names) {
+            let tyvar = new Tyvar();
+            tyvars.push(tyvar);
+            gammaPrime[name] = tyvar;
+        }
+        let taus = [];
+        let constraints = [];
+        for (let exp of exps) {
+            let tauAndC = exp.eval(gammaPrime);
+            taus.push(tauAndC.tau);
+            constraints.push(tauAndC.constraint);
+        }
+        for (let i in taus) {
+            constraints.push(new Equal(taus[i], tyvars[i]));
+        }
+        let constraint = Constraint.conjoin(constraints);
+        return Let.solveRestWithC(constraint, Gamma);
+    }
 }
 
 class LetStar extends Let {
