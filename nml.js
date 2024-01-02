@@ -869,7 +869,7 @@ class Apply extends Expression {
             throw new Error("Mistmatch amount of arguments and parameters");
         }
         for (let i in this.args) {
-            extendedClosure[paramNames[i]] = this.args[i].eval(Rho)
+            extendedClosure[paramNames[i]] = this.args[i].eval(Rho).exp
         }
         let result = lambdaBundle.exp.body.eval(extendedClosure);
         return result;
@@ -1036,7 +1036,7 @@ class Var extends Expression {
             throw new Error(this.name + " is not in Rho.");
         }
         let value = Rho[this.name];
-        return new ExpEvalBundle(value.val, value);
+        return new ExpEvalBundle(value.value, value);
     }
 
     typeCheck(Gamma) {
@@ -1141,7 +1141,7 @@ class Let extends Expression {
     eval(Rho) {
         let newRho = Environments.copy(Rho);
         for (let entry of this.bindings) {
-            newRho[entry[0]] = entry[1].eval(Rho);
+            newRho[entry[0]] = entry[1].eval(Rho).exp;
         }
         return this.exp.eval(newRho);
     }
