@@ -158,11 +158,11 @@ class Parser {
 
     tokenLetBindings() {
         let item = this.queue.pop();
-        let bindings = {};
+        let bindings = [];
         while (item != ")") {
             let name = this.queue.pop();
             let exp = this.tokenize(this.queue.pop());
-            bindings[name] = exp;
+            bindings.push([name, exp]);
             this.queue.pop(); // for opening )
             item = this.queue.pop();
         }
@@ -1139,10 +1139,9 @@ class Let extends Expression {
      * @param {Map<String, Expression>} Rho 
      */
     eval(Rho) {
-        let names = Object.keys(this.bindings);
         let newRho = Environments.copy(Rho);
-        for (let name of names) {
-            newRho[name] = this.bindings[name].eval(Rho);
+        for (let entry of this.bindings) {
+            newRho[entry[0]] = entry[1].eval(Rho);
         }
         return this.exp.eval(newRho);
     }
@@ -1150,9 +1149,9 @@ class Let extends Expression {
     typeCheck(Gamma) {
         let types = [];
         let constraints = [];
-        let names = Object.keys(this.bindings);
-        for (let name of names) {
-            let typeBundle = this.bindings[name].typeCheck(Gamma);
+        let names = this.bindings.map(entry => entry[0]);
+        for (let entry of this.bindings) {
+            let typeBundle = entry[1].typeCheck(Gamma);
             types.push(typeBundle.tau);
             constraints.push(typeBundle.constraint);
         }
@@ -1160,7 +1159,7 @@ class Let extends Expression {
         return this.solveRestWithC(c, Gamma, types, names);
     }
 
-    solveRestWithC(c, Gamma, types, names, exp) {
+    solveRestWithC(c, Gamma, types, names) {
         let theta = c.solve();
         let domTheta = Object.keys(theta);
         let freetyvars = Environments.freetyvars(Gamma);
@@ -1195,8 +1194,7 @@ class Letrec extends Let {
 
     eval(Rho) {
         //parsing
-        let exps = Object.values(this.bindings);
-        let names = Object.keys(this.bindings);
+        let exps = this.bindings.map(entry => entry[1]);
         for (let exp in exps) {
             if (!exp instanceof Lambda) {
                 throw new Error("Expression bound in letrec binding is not a lambda.");
@@ -1204,8 +1202,8 @@ class Letrec extends Let {
         }
         let newRef = {};
         let newRho = Environments.copy(Rho);
-        for (let name of names) {
-            newRho[name] = this.bindings[name].eval(newRef).exp;
+        for (let entry of this.bindings) {
+            newRho[entry[0]] = entry[1].eval(newRef).exp;
         }
         newRef = newRho;
         return this.exp.eval(newRho);
@@ -1213,8 +1211,8 @@ class Letrec extends Let {
 
     typeCheck(Gamma) {
         let tyvars = []; // distinct and fresh type variables
-        let names = Object.keys(this.bindings);
-        let exps = Object.values(this.bindings);
+        let names = this.bindings.map(entry => entry[0]);
+        let exps = this.bindings.map(entry => entry[1]);
         let gammaPrime = Environments.copy(Gamma);
         for (let name of names) {
             let tyvar = new Tyvar();
@@ -1238,6 +1236,25 @@ class Letrec extends Let {
 
 class LetStar extends Let {
     
+    eval(Rho) {
+        let newRho = Environments.copy(Rho);
+        for (let entry of this.bindings) {
+            newRho[entry[0]] = entry[1].eval(newRho).exp;
+        }
+        return this.exp.eval(newRho);
+    }
+
+    /**
+     *  | ty (LETX (LETSTAR, [], body)) = ty body
+        | ty (LETX (LETSTAR, (b :: bs), body)) = ty (LETX (LET, [b], LETX (LETSTAR, bs, body)))
+     * 
+     */
+    typeCheck(Gamma) {
+        if (Object.keys(this.bindings).length == 0) {
+            return this.exp.typeCheck(Gamma);
+        }
+        let newLet = new Let({"bindings" : fst, "exp" : new LetStar()})
+    }
 }
 
 // abstract class
