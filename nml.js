@@ -325,7 +325,7 @@ class And extends Constraint {
     solve() {
         let theta1 = this.c1.solve();
         let theta2 = this.c2.consubst(theta1).solve();
-        return theta1.compose(theta2);
+        return theta2.compose(theta1);
     }
 
     consubst(sub) { 
@@ -568,7 +568,7 @@ class Tyvar extends Type {
      */
     solveTyvar(tyvar) {
         let map = {};
-        map[this.typeString] = tyvar;
+        map[tyvar.typeString] = this;
         return new Substitution(map);
     }
 
@@ -706,6 +706,10 @@ class Forall extends Type {
 
     tysubst(sub) {
         return this.tau.tysubst(sub);
+    }
+
+    solve(tau) {
+        return this.tau.solve(tau);
     }
 
 }
@@ -847,7 +851,7 @@ class Apply extends Expression {
         }
         let tyvar = new Tyvar();
         let funty = new Funty(taus.slice(1), tyvar);
-        constraints.push(new Equal(taus[0].tau, funty));
+        constraints.push(new Equal(taus[0], funty));
         let bigC = Constraint.conjoin(constraints);
         return new TypeBundle(tyvar, bigC);
     }
@@ -997,7 +1001,7 @@ class Var extends Expression {
             throw new Error(this.name + " is not in Rho.");
         }
         let value = Rho[this.name];
-        return new ExpEvalBundle(value.value, value);
+        return new ExpEvalBundle(value.val, value);
     }
 
     typeCheck(Gamma) {
