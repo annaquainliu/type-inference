@@ -53,8 +53,8 @@ let p = new Parser();
 // catch(e) {}
 // console.log(p.interpret("(lambda (x) x)").toString());
 // console.log(p.interpret("((lambda (x) x) 3)").toString());
-// console.log(p.tokenInput("(begin ((lambda (x) 3) 3))"));
-// console.log(p.tokenInput("(begin (lambda (x) 3) 3)"));
+// console.log(p.interpret("(begin ((lambda (x) 3) 3))").toString());
+console.log(p.interpret("(begin (lambda (x) 90) 3)").toString());
 
 /**
 -> (val hello 3) 

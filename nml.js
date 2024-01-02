@@ -288,6 +288,11 @@ class Constraint {
         }
         return cs.pop().conjoin(cs);
     }
+
+    /**
+     * @returns {Array<Tyvar>} 
+     */
+    freetyvars() {}
 }
 
 
@@ -302,6 +307,8 @@ class Trivial extends Constraint {
     }
  
     consubst(sub) {return this;}
+
+    freetyvars() {return [];}
 
 }
 
@@ -332,6 +339,10 @@ class And extends Constraint {
         this.c1.consubst(sub);
         this.c2.consubst(sub);
         return this;
+    }
+
+    freetyvars() {
+        return Tyvar.union(c1.freetyvars(), c2.freetyvars());
     }
 }
 
@@ -364,6 +375,10 @@ class Equal extends Constraint {
         this.tau1 = this.tau1.tysubst(sub);
         this.tau2 = this.tau2.tysubst(sub);
         return this;
+    }
+
+    freetyvars() {
+        return Tyvar.union(this.tau1.freetyvars(), this.tau2.freetyvars());
     }
 }
 
@@ -435,6 +450,7 @@ class Type {
         }
         return new Forall(generalized, this);
      }
+
 }
 
 class Tycon extends Type {
@@ -523,6 +539,24 @@ class Tyvar extends Type {
 
     static reset() {
         tCounter = 0;
+    }
+
+    /**
+     * Returns the union of fst and snd
+     * @param {Array<Tyvar>} fst 
+     * @param {Array<Tyvar>} snd 
+     * @returns {Array<Tyvar>}
+     */
+    static union(fst, freetyvars2) {
+        let freetyvars1 = new Set(fst);
+        for (let tyvar of freetyvars2) {
+            freetyvars1.add(tyvar);
+        }
+        let array = [];
+        for (let tyvar of freetyvars1) {
+            array.push(tyvar);
+        }
+        return array;
     }
     
     /**
@@ -1097,6 +1131,59 @@ class Let extends Expression {
         this.bindings = info["bindings"];
         this.exp = info["exp"];
     }
+    /**
+     * Evaluate all expressions in the bindings
+     * Evaluate let body in extended rho environment
+     * Return the evaluation of the body
+     * @param {Map<String, Expression>} Rho 
+     */
+    eval(Rho) {
+        let names = Object.keys(this.bindings);
+        let newRho = Environments.copy(Rho);
+        for (let name of names) {
+            newRho[name] = this.bindings[name].eval(Rho);
+        }
+        return this.body.eval(newRho);
+    }
+
+    typeCheck(Gamma) {
+        let types = [];
+        let constraints = [];
+        let names = Object.keys(this.bindings);
+        for (let name of names) {
+            let typeBundle = this.bindings[name].typeCheck(Gamma);
+            types.push(typeBundle.tau);
+            constraints.push(typeBundle.constraint);
+        }
+        let c = Constraint.conjoin(constraints);
+        let theta = c.solve();
+        let domTheta = Object.keys(theta);
+        let freetyvars = Environments.freetyvars(Gamma);
+        let inter = [];
+        for (let freetyvar of freetyvars) {
+            if (domTheta.includes(freetyvar.typeString)) {
+                inter.push(freetyvar);
+            }
+        }
+        let alphaConstraints = [];
+        for (let alpha of inter) {
+            alphaConstraints.push(new Equal(alpha, alpha.tysubst(theta)));
+        }
+        let cPrime = Constraint.conjoin(alphaConstraints);
+        let constraintfreetyvars = cPrime.freetyvars();
+        let freeTyvarsGamma = Environments.freetyvars(Gamma);
+        let union = Tyvar.union(constraintfreetyvars, freeTyvarsGamma);
+        let sigmas = [];
+        for (let tau of types) {
+            sigmas.push(tau.tysubst(theta).generalize(union))
+        }
+        let extendedGamma = Environments.copy(Gamma);
+        for (let i in names) {
+            extendedGamma[names[i]] = sigmas[i];
+        }
+        let tauBundle = this.exp.eval(extendedGamma);
+        return new TypeBundle(tauBundle.tau, new Equal(tauBundle.constraint, cPrime));
+    }   
 }
 
 class Letrec extends Let {
