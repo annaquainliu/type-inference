@@ -15,7 +15,7 @@ function main() {
 
 class Parser {
     queue = [];
-    keywords = ["let", "let*", "letrec", "val-rec", "if", "begin", "lambda"];
+    keywords = ["let", "let*", "letrec", "val-rec", "if", "begin", "lambda", "val", "define"];
     interpret(value) {
         let def = this.tokenInput(value);
         return def.eval({}, {});
@@ -45,6 +45,9 @@ class Parser {
             this.queue.push(str);
         }
         this.queue = this.queue.reverse();
+        if (this.queue[this.queue.length - 1] == "(") {
+            this.queue.pop();
+        }
         return this.tokenDefinition(this.queue.pop());
     }
 
@@ -53,10 +56,10 @@ class Parser {
             return new Val(this.queue.pop(), this.tokenize(this.queue.pop()));
         }
         else if (def == "val-rec") {
-            return new ValRec(this.queue.pop(), this.tokenize(this.queue.pop()));
+            return new ValRec(this.queue.pop(), this.tokenLambda());
         }
         else if (def == "define") {
-            return new Define(this.queue.pop(), this.tokenize(this.queue.pop()));
+            return new Define(this.queue.pop(), this.tokenLambda());
         }   
         else {
             return new Val("it", this.tokenize(def));
@@ -1335,7 +1338,7 @@ class ValRec extends Definition {
         let gammaPrime = Environments.copy(Gamma);
         gammaPrime[this.name] = new Forall([], alpha);
         let type = this.exp.typeCheck(gammaPrime);
-        let theta = new And(type.constraint, new Equal(alpha, type.tau));
+        let theta = new And(type.constraint, new Equal(alpha, type.tau)).solve();
         let sigma = alpha.tysubst(theta).generalize(Environments.freetyvars(Gamma));
         if (!this.exp instanceof Lambda) {
             throw new Error("Expression is not a lambda in val-rec/define definition");
