@@ -452,6 +452,7 @@ class Type {
         return new Forall(generalized, this);
      }
 
+
 }
 
 class Tycon extends Type {
@@ -522,6 +523,7 @@ class Tycon extends Type {
     tysubst(sub) {
         return this;
     }
+
 }
 
 class Tyvar extends Type {
@@ -533,7 +535,6 @@ class Tyvar extends Type {
         this.count = Tyvar.tCounter;
         Tyvar.tCounter++;
     }
-
     get typeString() {
         return "'t" + this.count;
     }
@@ -614,6 +615,7 @@ class Tyvar extends Type {
         }
         return type;
     }
+
 }
 
 class Conapp extends Type {
@@ -695,7 +697,6 @@ class Conapp extends Type {
         }
         return new Conapp(this.tycon.tysubst(sub), newTypes);
     }
-
 }
 
 class Forall extends Type {
@@ -789,7 +790,12 @@ class Environments {
     }
 
     static copy(environment) {
-        return JSON.parse(JSON.stringify(environment));
+        let newEnv = {};
+        let names = Object.keys(environment);
+        for (let name of names) {
+            newEnv[name] = environment[name];
+        }
+        return newEnv;
     }
 }
 
@@ -1175,18 +1181,18 @@ class Let extends Expression {
         }
         let cPrime = Constraint.conjoin(alphaConstraints);
         let constraintfreetyvars = cPrime.freetyvars();
-        let freeTyvarsGamma = Environments.freetyvars(Gamma);
-        let union = Tyvar.union(constraintfreetyvars, freeTyvarsGamma);
+        let union = Tyvar.union(constraintfreetyvars, freetyvars);
         let sigmas = [];
         for (let tau of types) {
-            sigmas.push(tau.tysubst(theta).generalize(union))
+            let sigma = tau.tysubst(theta).generalize(union);
+            sigmas.push(sigma)
         }
         let extendedGamma = Environments.copy(Gamma);
         for (let i in names) {
             extendedGamma[names[i]] = sigmas[i];
         }
         let tauBundle = this.exp.typeCheck(extendedGamma);
-        return new TypeBundle(tauBundle.tau, new Equal(tauBundle.constraint, cPrime));
+        return new TypeBundle(tauBundle.tau, new And(tauBundle.constraint, cPrime));
     }
 }
 
@@ -1244,13 +1250,8 @@ class LetStar extends Let {
         return this.exp.eval(newRho);
     }
 
-    /**
-     *  | ty (LETX (LETSTAR, [], body)) = ty body
-        | ty (LETX (LETSTAR, (b :: bs), body)) = ty (LETX (LET, [b], LETX (LETSTAR, bs, body)))
-     * 
-     */
     typeCheck(Gamma) {
-        if (Object.keys(this.bindings).length == 0) {
+        if (this.bindings.length == 0) {
             return this.exp.typeCheck(Gamma);
         }
         let newLet = new Let({"bindings" : [this.bindings[0]], 

@@ -51,10 +51,10 @@ let p = new Parser();
 //     console.log(p.interpret("(if #t '(#f) '(12 3))").toString());
 // }
 // catch(e) {}
-// console.log(p.interpret("(lambda (x) x)").toString());
-// console.log(p.interpret("((lambda (x) x) 3)").toString());
-// console.log(p.interpret("(begin ((lambda (x) 3) 3))").toString());
-// console.log(p.interpret("(begin (lambda (x) 90) 3)").toString());
+console.log(p.interpret("(lambda (x) x)").toString());
+console.log(p.interpret("((lambda (x) x) 3)").toString());
+console.log(p.interpret("(begin ((lambda (x) 3) 3))").toString());
+console.log(p.interpret("(begin (lambda (x) 90) 3)").toString());
 console.log(p.interpret("(let ([x 45][y 'fgd]) y)").toString() == "fgd : sym")
 console.log(p.interpret("(let ([x 45][x 'fgd]) x)").toString() == "fgd : sym")
 console.log(p.interpret("(let ([x 45]) x)").toString() == "45 : int")
@@ -64,6 +64,7 @@ console.log(p.interpret("(let ([x (begin 34 53)][boobie #t]) x)").toString() == 
 console.log(p.interpret("(let ([x (begin '())][boobie (lambda (x y) x)]) boobie)").toString())
 console.log(p.interpret("(letrec ([x (lambda (y) y)]) (x 7))").toString() == "7 : int")
 console.log(p.interpret("(let* ([x 34][y x]) y)").toString() == "34 : int");
+console.log(p.interpret("(let* ([x 34][y x][z y]) z)").toString() == "34 : int");
 /**
 -> (val hello 3) 
 3 : int
