@@ -72,3 +72,5 @@ console.log(p.interpret("(define hello (bee poo) 3)").toString() == "<function> 
 console.log(p.interpret("(val-rec hello (bee poo) 3)").toString() == "<function> : (forall ['a 'b] ('a 'b -> int))");
 console.log(p.interpret("(+ 3 4)").toString() == "7 : int");
 console.log(p.interpret("+").toString() == "<function> : (int int -> int)");
+console.log(p.interpret("(* 3 4)").toString() == "12 : int");
+console.log(p.interpret("(/ 3 4)").toString() == "0 : int");

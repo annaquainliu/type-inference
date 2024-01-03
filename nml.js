@@ -808,19 +808,38 @@ class Environments {
     }
 
     static initEnvs() {
-       Environments.makeFunction("+", 
-                    ["fst", "snd"], 
-                    new Forall([], new Funty([Tycon.intty, Tycon.intty], Tycon.intty)), 
+        let arithTau = new Forall([], new Funty([Tycon.intty, Tycon.intty], Tycon.intty))
+        let binaryParams = ["fst", "snd"];
+        let arithTypeof = gamma => {
+            let fstTau = gamma["fst"].typeCheck();
+            let sndTau = gamma["snd"].typeCheck();
+            let constraints = [fstTau.constraint, sndTau.constraint, new Equal(fstTau.tau, Tycon.intty), new Equal(sndTau.tau, Tycon.intty)];
+            return new TypeBundle(Tycon.intty, Constraint.conjoin(constraints));
+        };
+        Environments.makeFunction("+", binaryParams, arithTau, 
                     rho => {
-                    let result = rho["fst"].value + rho["snd"].value;
-                    return new ExpEvalBundle(result, new Num(result))
+                        let result = new Num(rho["fst"].value + rho["snd"].value);
+                        return new ExpEvalBundle(result.value, result);
                     },
-                    gamma => {
-                    let fstTau = gamma["fst"].typeCheck();
-                    let sndTau = gamma["snd"].typeCheck();
-                    let constraints = [fstTau.constraint, sndTau.constraint, new Equal(fstTau.tau, Tycon.intty), new Equal(sndTau.tau, Tycon.intty)];
-                    return new TypeBundle(Tycon.intty, Constraint.conjoin(constraints));
-                    });
+                    arithTypeof);
+        Environments.makeFunction("-", binaryParams, arithTau,
+                    rho => {
+                        let result = new Num(rho["fst"].value - rho["snd"].value);
+                        return new ExpEvalBundle(result.value, result);
+                    },
+                    arithTypeof);
+        Environments.makeFunction("/", binaryParams, arithTau,
+                    rho => {
+                        let result = new Num(rho["fst"].value / rho["snd"].value);
+                        return new ExpEvalBundle(result.value, result);
+                    },
+                    arithTypeof);
+        Environments.makeFunction("*", binaryParams, arithTau,
+                    rho => {
+                        let result = new Num(rho["fst"].value * rho["snd"].value);
+                        return new ExpEvalBundle(result.value, result);
+                    },
+                    arithTypeof);
     }
 
     static makeFunction(name, params, type, evalFun, typeFun) {
@@ -984,7 +1003,11 @@ class Num extends Literal {
 
     constructor(int) {
         super();
-        this.value = parseInt(int)
+        let result = int;
+        if (int instanceof String) {
+            result = parseInt(int);
+        }
+        this.value = Math.floor(result);
         this.type = Tycon.intty;
     }
 
