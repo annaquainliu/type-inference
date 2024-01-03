@@ -69,3 +69,5 @@ console.log(p.interpret("(let* ([x 34][y x][z y][l 4][p l]) p)").toString() == "
 console.log(p.interpret("(val hello 3)").toString());
 console.log(p.interpret("(define hello (bee poo) 3)").toString());
 console.log(p.interpret("(val-rec hello (bee poo) 3)").toString());
+console.log(p.interpret("(+ 3 4)").toString());
+

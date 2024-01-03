@@ -402,6 +402,16 @@ class Type {
 
     constructor() {}
 
+    alphabetasize() {
+        let freetyvars = this.freetyvars();
+        freetyvars = freetyvars.sort((a, b) => b.count - a.count);
+        let sub = {};
+        for (let i = 0; i < freetyvars.length; i++) {
+            sub[freetyvars[i].typeString] = new Tyvar(String.fromCharCode(i + 61));
+        }
+        this.tysubst(new Substitution(sub));
+    }
+
     static listtype(tau) {
         return new Conapp(new Tycon("list"), [tau]);
     }
@@ -541,10 +551,14 @@ class Tyvar extends Type {
     constructor() {
         super();
         this.count = Tyvar.tCounter;
+        this.typeString = "'t" + this.count;
         Tyvar.tCounter++;
     }
-    get typeString() {
-        return "'t" + this.count;
+
+    constructor(letter) {
+        super();
+        this.count = 0;
+        this.typeString = "'" + letter;
     }
 
     static reset() {
@@ -799,7 +813,7 @@ class Environments {
     static initEnvs() {
        Environments.makeFunction("+", 
                     ["fst", "snd"], 
-                    new Funty([Tycon.intty, Tycon.intty], Tycon.intty), 
+                    new Forall([], new Funty([Tycon.intty, Tycon.intty], Tycon.intty)), 
                     rho => {
                     let result = rho["fst"].value + rho["snd"].value;
                     return new ExpEvalBundle(result, new Num(result))
