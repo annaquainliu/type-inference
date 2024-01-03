@@ -15,10 +15,14 @@ function main() {
 
 class Parser {
     queue = [];
-    keywords = ["let", "let*", "letrec", "val-rec", "if", "begin", "lambda", "val", "define"];
+    expKeywords = ["let", "let*", "letrec", "if", "begin", "lambda"];
+    defineKeywords = ["val", "define", "val-rec"];
+
     interpret(value) {
+        Environments.reset();
+        Environments.initEnvs();
         let def = this.tokenInput(value);
-        return def.eval({}, {});
+        return def.eval(Environments.Gamma, Environments.Rho);
     }
 
     tokenInput(input) {
@@ -45,10 +49,11 @@ class Parser {
             this.queue.push(str);
         }
         this.queue = this.queue.reverse();
-        if (this.queue[this.queue.length - 1] == "(") {
+        if (this.queue.length >= 2 && this.defineKeywords.includes(this.queue[this.queue.length - 2])) {
             this.queue.pop();
+            return this.tokenDefinition(this.queue.pop());
         }
-        return this.tokenDefinition(this.queue.pop());
+        return new Val("it", this.tokenize(this.queue.pop()));
     }
 
     tokenDefinition(def) {
@@ -75,7 +80,7 @@ class Parser {
     tokenize(exp) {
         if (exp == "(") {
             let item = this.queue.pop();
-            if (this.keywords.includes(item)) {
+            if (this.expKeywords.includes(item)) {
                 return this.tokenize(item);
             }
             let fun = this.tokenize(item);
@@ -783,6 +788,39 @@ class Funty extends Conapp {
 
 class Environments {
 
+    static Gamma = {};
+    static Rho = {};
+
+    static reset() {
+        Environments.Gamma = {};
+        Environments.Rho = {};
+    }
+
+    static initEnvs() {
+       Environments.makeFunction("+", 
+                    ["fst", "snd"], 
+                    new Funty([Tycon.intty, Tycon.intty], Tycon.intty), 
+                    rho => {
+                    let result = rho["fst"].value + rho["snd"].value;
+                    return new ExpEvalBundle(result, new Num(result))
+                    },
+                    gamma => {
+                    let fstTau = gamma["fst"].typeCheck();
+                    let sndTau = gamma["snd"].typeCheck();
+                    let constraints = [fstTau.constraint, sndTau.constraint, new Equal(fstTau.tau, Tycon.intty), new Equal(sndTau.tau, Tycon.intty)];
+                    return new TypeBundle(Tycon.intty, Constraint.conjoin(constraints));
+                    });
+    }
+
+    static makeFunction(name, params, type, evalFun, typeFun) {
+        let exp = new Expression();
+        exp.eval = evalFun;
+        exp.typeCheck = typeFun;
+        let lambda = new Lambda(params, exp);
+        Environments.Rho[name] = lambda;
+        Environments.Gamma[name] = type;
+    }
+
     static freetyvars(Gamma) {
         let freevars = [];
         let taus = Object.values(Gamma);
@@ -904,7 +942,7 @@ class Apply extends Expression {
 // abstract class
 class Literal extends Expression {
 
-    value; // string
+    value;
     constraint; // Constraint
     type; // Type
 
