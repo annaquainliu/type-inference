@@ -51,23 +51,24 @@ let p = new Parser();
 //     console.log(p.interpret("(if #t '(#f) '(12 3))").toString());
 // }
 // catch(e) {}
-console.log(p.interpret("(lambda (x) x)").toString());
-console.log(p.interpret("((lambda (x) x) 3)").toString());
-console.log(p.interpret("(begin ((lambda (x) 3) 3))").toString());
-console.log(p.interpret("(begin (lambda (x) 90) 3)").toString());
+console.log(p.interpret("(lambda (x) x)").toString() == "<function> : (forall ['a] ('a -> 'a))");
+console.log(p.interpret("((lambda (x) x) 3)").toString() == "3 : int");
+console.log(p.interpret("(begin ((lambda (x) 3) 3))").toString() == "3 : int");
+console.log(p.interpret("(begin (lambda (x) 90) 3)").toString() == "3 : int");
 console.log(p.interpret("(let ([x 45][y 'fgd]) y)").toString() == "fgd : sym")
 console.log(p.interpret("(let ([x 45][x 'fgd]) x)").toString() == "fgd : sym")
 console.log(p.interpret("(let ([x 45]) x)").toString() == "45 : int")
 console.log(p.interpret("(let ([x (if #t '(34 56) '())]) x)").toString() == "(34 56) : (list int)")
 console.log(p.interpret("(let ([x (if #t '(34 56) '())][boobie #t]) boobie)").toString()  == "#t : bool")
 console.log(p.interpret("(let ([x (begin 34 53)][boobie #t]) x)").toString() == "53 : int")
-console.log(p.interpret("(let ([x (begin '())][boobie (lambda (x y) x)]) boobie)").toString())
+console.log(p.interpret("(let ([x (begin '())][boobie (lambda (x y) x)]) boobie)").toString() == "<function> : (forall ['a 'b] ('a 'b -> 'a))")
 console.log(p.interpret("(letrec ([x (lambda (y) y)]) (x 7))").toString() == "7 : int")
 console.log(p.interpret("(let* ([x 34][y x]) y)").toString() == "34 : int");
 console.log(p.interpret("(let* ([x 34][y x][z y]) z)").toString() == "34 : int");
 console.log(p.interpret("(let* ([x 34][y x][z y][l 4][p l]) p)").toString() == "4 : int");
-console.log(p.interpret("(val hello 3)").toString());
-console.log(p.interpret("(define hello (bee poo) 3)").toString());
-console.log(p.interpret("(val-rec hello (bee poo) 3)").toString());
-console.log(p.interpret("(+ 3 4)").toString());
-
+console.log(p.interpret("(val hello 3)").toString() == "3 : int");
+console.log(p.interpret("(val hello '())").toString() == "() : (forall ['a] (list 'a))");
+console.log(p.interpret("(define hello (bee poo) 3)").toString() == "<function> : (forall ['a 'b] ('a 'b -> int))");
+console.log(p.interpret("(val-rec hello (bee poo) 3)").toString() == "<function> : (forall ['a 'b] ('a 'b -> int))");
+console.log(p.interpret("(+ 3 4)").toString() == "7 : int");
+console.log(p.interpret("+").toString() == "<function> : (int int -> int)");

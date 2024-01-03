@@ -402,16 +402,6 @@ class Type {
 
     constructor() {}
 
-    alphabetasize() {
-        let freetyvars = this.freetyvars();
-        freetyvars = freetyvars.sort((a, b) => b.count - a.count);
-        let sub = {};
-        for (let i = 0; i < freetyvars.length; i++) {
-            sub[freetyvars[i].typeString] = new Tyvar(String.fromCharCode(i + 61));
-        }
-        this.tysubst(new Substitution(sub));
-    }
-
     static listtype(tau) {
         return new Conapp(new Tycon("list"), [tau]);
     }
@@ -553,12 +543,6 @@ class Tyvar extends Type {
         this.count = Tyvar.tCounter;
         this.typeString = "'t" + this.count;
         Tyvar.tCounter++;
-    }
-
-    constructor(letter) {
-        super();
-        this.count = 0;
-        this.typeString = "'" + letter;
     }
 
     static reset() {
@@ -768,6 +752,19 @@ class Forall extends Type {
 
     solve(tau) {
         return this.tau.solve(tau);
+    }
+
+    alphabetasize() {
+        let freetyvars = this.tyvars;
+        let sub = {};
+        for (let i = 0; i < freetyvars.length; i++) {
+            let alpha = new Tycon("'" + String.fromCharCode(i + 97));
+            sub[freetyvars[i].typeString] = alpha;
+            freetyvars[i] = alpha;
+        }
+        this.tau = this.tysubst(new Substitution(sub));
+
+        return this;
     }
 
 }
@@ -1373,7 +1370,7 @@ class Val extends Definition {
         let sigma = newTau.generalize(Environments.freetyvars(Gamma));
         Gamma[this.name] = sigma;
         Rho[this.name] = value.exp;
-        return new DefEvalBundle(value.val, sigma);
+        return new DefEvalBundle(value.val, sigma.alphabetasize());
     }
 }
 
@@ -1395,7 +1392,7 @@ class ValRec extends Definition {
         if (!this.exp instanceof Lambda) {
             throw new Error("Expression is not a lambda in val-rec/define definition");
         }
-        return new DefEvalBundle(lambda.val, sigma);
+        return new DefEvalBundle(lambda.val, sigma.alphabetasize());
     }
 }
 
