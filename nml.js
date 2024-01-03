@@ -220,16 +220,27 @@ class Substitution {
 
     /**
      * compose : Combine both substitutions
+     * 
+     fun compose (theta2, theta1) =
+        let val domain  = union (dom theta2, dom theta1)
+            val replace = tysubst theta2 o varsubst theta1
+        in  mkEnv (domain, map replace domain)
+        end
      * @param {Substitution} theta1 
      * @param {Substitution} theta2 
      * @returns {Substitution} this
      */
     compose(theta2) {
-        let keys = Object.keys(theta2.mapping);
-        for (let key of keys) {
-            this.mapping[key] = theta2.mapping[key];
+        let domain = Tyvar.union(Object.keys(theta2.mapping), Object.keys(this.mapping));
+        let mapping = {};
+        for (let name of domain) {
+            let tau = this.mapping[name];
+            if (tau == null) {
+                tau = Tyvar.get(name);
+            }
+            mapping[name] = tau.tysubst(theta2)
         }
-        return this;
+        return new Substitution(mapping);
     }
 
     /**
@@ -344,7 +355,7 @@ class And extends Constraint {
     solve() {
         let theta1 = this.c1.solve();
         let theta2 = this.c2.consubst(theta1).solve();
-        return theta2.compose(theta1);
+        return theta1.compose(theta2);
     }
 
     consubst(sub) { 
@@ -540,12 +551,18 @@ class Tycon extends Type {
 class Tyvar extends Type {
     static tCounter = 0;
     count;
+    static pastTyvars = {};
 
     constructor() {
         super();
         this.count = Tyvar.tCounter;
         this.typeString = "'t" + this.count;
         Tyvar.tCounter++;
+        Tyvar.pastTyvars[this.typeString] = this;
+    }
+
+    static get(name) {
+        return Tyvar.pastTyvars[name];
     }
 
     static reset() {
@@ -558,9 +575,9 @@ class Tyvar extends Type {
      * @param {Array<Tyvar>} snd 
      * @returns {Array<Tyvar>}
      */
-    static union(fst, freetyvars2) {
+    static union(fst, snd) {
         let freetyvars1 = new Set(fst);
-        for (let tyvar of freetyvars2) {
+        for (let tyvar of snd) {
             freetyvars1.add(tyvar);
         }
         let array = [];
@@ -860,6 +877,12 @@ class Environments {
         Environments.makeFunction(">", binaryParams, new Forall([], new Funty([Tycon.intty, Tycon.intty], Tycon.boolty)),
                     rho => {
                         let result = new Bool(rho["fst"].value > rho["snd"].value)
+                        return new ExpEvalBundle(result.value, result);
+                    },
+                    compareTypeof);
+        Environments.makeFunction("<", binaryParams, new Forall([], new Funty([Tycon.intty, Tycon.intty], Tycon.boolty)),
+                    rho => {
+                        let result = new Bool(rho["fst"].value < rho["snd"].value)
                         return new ExpEvalBundle(result.value, result);
                     },
                     compareTypeof);
@@ -1441,6 +1464,12 @@ class Val extends Definition {
 
 class ValRec extends Definition {
 
+    constructor(name, exp) {
+        super(name, exp);
+        if (!exp instanceof Lambda) {
+            throw new Error("val-rec/define not given a lambda expression!");
+        }
+    }
     eval(Gamma, Rho) {
         // evaluation
         let lambda = this.exp.eval({});
@@ -1452,14 +1481,15 @@ class ValRec extends Definition {
         let gammaPrime = Environments.copy(Gamma);
         gammaPrime[this.name] = new Forall([], alpha);
         let type = this.exp.typeCheck(gammaPrime);
-        let theta = new And(type.constraint, new Equal(alpha, type.tau)).solve();
-        let sigma = alpha.tysubst(theta).generalize(Environments.freetyvars(Gamma));
-        if (!this.exp instanceof Lambda) {
-            throw new Error("Expression is not a lambda in val-rec/define definition");
-        }
+        let constraint = new And(type.constraint, new Equal(alpha, type.tau));
+        let theta = constraint.solve();
+        let subbedTau = alpha.tysubst(theta);
+        let sigma = subbedTau.generalize(Environments.freetyvars(Gamma));
+        Gamma[this.name] = sigma;
         return new DefEvalBundle(lambda.val, sigma.alphabetasize());
     }
 }
 
 module.exports = {Constraint : Constraint, And : And, Equal : Equal, Type : Type, Tycon : Tycon, Trivial : Trivial,
-                  Parser: Parser, Forall : Forall, Conapp : Conapp, Tyvar : Tyvar, Substitution : Substitution};
+                  Parser: Parser, Forall : Forall, Conapp : Conapp, Tyvar : Tyvar, Substitution : Substitution,
+                  Environments : Environments};

@@ -1,4 +1,4 @@
-const {Constraint, And, Equal, Type, Tycon, Trivial, Parser, Forall, Conapp, Tyvar, Substitution} = require("../nml");
+const {Constraint, And, Equal, Type, Tycon, Trivial, Parser, Forall, Conapp, Tyvar, Substitution, Environments} = require("../nml");
 
 // let c = [new Equal(Tycon.boolty, Tycon.boolty), new Trivial(), new Equal(Tycon.intty, Tycon.boolty)];
 // let bigC = Constraint.conjoin(c);
@@ -85,3 +85,10 @@ console.log(p.interpret("(= #t #f)").toString() == "#f : bool");
 console.log(p.interpret("(= #t #t)").toString() == "#t : bool");
 console.log(p.interpret("(= (= 'a 'a) #t)").toString() == "#t : bool");
 console.log(p.interpret("(= (* 2 2) (* 4 1))").toString() == "#t : bool");
+console.log(p.interpret("(> (* 2 2) (* 4 1))").toString() == "#f : bool");
+console.log(p.interpret("(> (* 2 5) (* 4 1))").toString() == "#t : bool");
+console.log(p.interpret("(< (* 2 5) (* 4 1))").toString() == "#f : bool");
+console.log(p.interpret("(< (* 2 2) (* 4 1))").toString() == "#f : bool");
+let code = "(define recursion (hi) (if (= hi 0) hi (recursion (- hi 1))))"
+console.log(p.interpret(code).toString() == "<function> : (int -> int)");
+console.log(Environments.Gamma);
