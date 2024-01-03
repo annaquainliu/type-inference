@@ -1149,9 +1149,9 @@ class If extends Expression {
      * @returns {ExpEvalBundle}
      */
     eval(Rho) {
-        let results = [this.condition.eval(Rho), this.trueCase.eval(Rho), this.falseCase.eval(Rho)];
-        let index = results[0].val == "#t" ? 1 : 2;
-        return new ExpEvalBundle(results[index].val, results[index].exp);
+        let condition = this.condition.eval(Rho);
+        let result = condition.val == "#t" ? this.trueCase.eval(Rho) : this.falseCase.eval(Rho);
+        return result;
     }
 
     typeCheck(Gamma) {
@@ -1431,7 +1431,7 @@ class DefEvalBundle {
      */
     constructor(value, tau) {
         this.value = value;
-        this.tau = tau;
+        this.tau = tau.alphabetasize();
     }
 
     toString() {
@@ -1458,7 +1458,7 @@ class Val extends Definition {
         let sigma = newTau.generalize(Environments.freetyvars(Gamma));
         Gamma[this.name] = sigma;
         Rho[this.name] = value.exp;
-        return new DefEvalBundle(value.val, sigma.alphabetasize());
+        return new DefEvalBundle(value.val, sigma);
     }
 }
 
@@ -1474,8 +1474,8 @@ class ValRec extends Definition {
         // evaluation
         let lambda = this.exp.eval({});
         Rho[this.name] = lambda.exp;
-        lambda.closure = Rho;
-
+        lambda.exp.closure = Rho;
+        
         //type inference
         let alpha = new Tyvar();
         let gammaPrime = Environments.copy(Gamma);
@@ -1486,7 +1486,7 @@ class ValRec extends Definition {
         let subbedTau = alpha.tysubst(theta);
         let sigma = subbedTau.generalize(Environments.freetyvars(Gamma));
         Gamma[this.name] = sigma;
-        return new DefEvalBundle(lambda.val, sigma.alphabetasize());
+        return new DefEvalBundle(lambda.val, sigma);
     }
 }
 

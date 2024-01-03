@@ -91,4 +91,4 @@ console.log(p.interpret("(< (* 2 5) (* 4 1))").toString() == "#f : bool");
 console.log(p.interpret("(< (* 2 2) (* 4 1))").toString() == "#f : bool");
 let code = "(define recursion (hi) (if (= hi 0) hi (recursion (- hi 1))))"
 console.log(p.interpret(code).toString() == "<function> : (int -> int)");
-console.log(Environments.Gamma);
+console.log(p.interpret("(recursion 1)").toString() == "0 : int")
