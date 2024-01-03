@@ -18,9 +18,12 @@ class Parser {
     expKeywords = ["let", "let*", "letrec", "if", "begin", "lambda"];
     defineKeywords = ["val", "define", "val-rec"];
 
-    interpret(value) {
+    constructor() {
         Environments.reset();
         Environments.initEnvs();
+    }
+
+    interpret(value) {
         let def = this.tokenInput(value);
         return def.eval(Environments.Gamma, Environments.Rho);
     }
@@ -808,13 +811,21 @@ class Environments {
     }
 
     static initEnvs() {
-        let arithTau = new Forall([], new Funty([Tycon.intty, Tycon.intty], Tycon.intty))
+        let arithTau = new Forall([], new Funty([Tycon.intty, Tycon.intty], Tycon.intty));
+        let tyvar = new Tyvar();
+        let compareTau = new Funty([tyvar, tyvar], Tycon.boolty).generalize([]);
         let binaryParams = ["fst", "snd"];
-        let arithTypeof = gamma => {
+        let binaryTypeof = gamma => {
             let fstTau = gamma["fst"].typeCheck();
             let sndTau = gamma["snd"].typeCheck();
-            let constraints = [fstTau.constraint, sndTau.constraint, new Equal(fstTau.tau, Tycon.intty), new Equal(sndTau.tau, Tycon.intty)];
-            return new TypeBundle(Tycon.intty, Constraint.conjoin(constraints));
+            let constraints = [fstTau.constraint, sndTau.constraint];
+            return Constraint.conjoin(constraints);
+        }
+        let arithTypeof = gamma => {
+            return new TypeBundle(Tycon.intty, binaryTypeof(gamma));
+        };
+        let compareTypeof = gamma => {
+            return new TypeBundle(Tycon.boolty, binaryTypeof(gamma));
         };
         Environments.makeFunction("+", binaryParams, arithTau, 
                     rho => {
@@ -840,6 +851,18 @@ class Environments {
                         return new ExpEvalBundle(result.value, result);
                     },
                     arithTypeof);
+        Environments.makeFunction("=", binaryParams, compareTau,
+                    rho => {
+                        let result = new Bool(rho["fst"].equal(rho["snd"]))
+                        return new ExpEvalBundle(result.value, result);
+                    },
+                    compareTypeof);
+        Environments.makeFunction(">", binaryParams, new Forall([], new Funty([Tycon.intty, Tycon.intty], Tycon.boolty)),
+                    rho => {
+                        let result = new Bool(rho["fst"].value > rho["snd"].value)
+                        return new ExpEvalBundle(result.value, result);
+                    },
+                    compareTypeof);
     }
 
     static makeFunction(name, params, type, evalFun, typeFun) {
@@ -896,6 +919,10 @@ class Expression {
      * @returns {TypeBundle} 
      */
     typeCheck(Gamma) {}
+
+    equal(snd) {
+        throw new Error("Compared expressions for equality.");
+    }
 }
 
 class TypeBundle {
@@ -989,6 +1016,13 @@ class Literal extends Expression {
     typeCheck(Gamma) {
         return new TypeBundle(this.type, this.constraint);
     }
+
+    /**
+     * @param {Literal} snd 
+     */
+    equal(snd) {
+        return this.value == snd.value;
+    }
 }
 
 class Sym extends Literal {
@@ -1016,7 +1050,12 @@ class Num extends Literal {
 class Bool extends Literal {
     constructor(bool) {
         super();
-        this.value = bool;
+        if (bool == true || bool == false) {
+            this.value = bool ? "#t" : "#f";
+        }
+        else {
+            this.value = bool;
+        }
         this.type = Tycon.boolty;
     }
 
@@ -1123,10 +1162,13 @@ class Var extends Expression {
     typeCheck(Gamma) {
         let type_scheme = Gamma[this.name];
         let tyvars = []
+        let sub = {};
         for (let tyvar of type_scheme.tyvars) {
-            tyvars.push(new Tyvar());
+            let newTyvar = new Tyvar();
+            tyvars.push(newTyvar);
+            sub[tyvar.typeString] = newTyvar;
         }
-        let newType = new Forall(tyvars, type_scheme.tau);
+        let newType = new Forall(tyvars, type_scheme.tau.tysubst(new Substitution(sub)));
         return new TypeBundle(newType, new Trivial());
     }
 }
