@@ -1206,12 +1206,13 @@ class Letrec extends Let {
                 throw new Error("Expression bound in letrec binding is not a lambda.");
             }
         }
-        let newRef = {};
         let newRho = Environments.copy(Rho);
         for (let entry of this.bindings) {
-            newRho[entry[0]] = entry[1].eval(newRef).exp;
+            newRho[entry[0]] = entry[1].eval({}).exp;
         }
-        newRef = newRho;
+        for (let entry of this.bindings) {
+            newRho[entry[0]].closure = newRho;
+        }
         return this.exp.eval(newRho);
     }
 
@@ -1301,6 +1302,9 @@ class DefEvalBundle {
 // function types
 class Define extends Definition {
 
+    eval(Gamma, Rho) {
+        return new ValRec(this.name, this.exp).eval(Gamma, Rho);
+    }   
 }
 
 // val
@@ -1320,6 +1324,24 @@ class Val extends Definition {
 
 class ValRec extends Definition {
 
+    eval(Gamma, Rho) {
+        // evaluation
+        let lambda = this.exp.eval({});
+        Rho[this.name] = lambda.exp;
+        lambda.closure = Rho;
+
+        //type inference
+        let alpha = new Tyvar();
+        let gammaPrime = Environments.copy(Gamma);
+        gammaPrime[this.name] = new Forall([], alpha);
+        let type = this.exp.typeCheck(gammaPrime);
+        let theta = new And(type.constraint, new Equal(alpha, type.tau));
+        let sigma = alpha.tysubst(theta).generalize(Environments.freetyvars(Gamma));
+        if (!this.exp instanceof Lambda) {
+            throw new Error("Expression is not a lambda in val-rec/define definition");
+        }
+        return new DefEvalBundle(lambda.val, sigma);
+    }
 }
 
 module.exports = {Constraint : Constraint, And : And, Equal : Equal, Type : Type, Tycon : Tycon, Trivial : Trivial,

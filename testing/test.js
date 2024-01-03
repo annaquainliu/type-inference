@@ -65,6 +65,7 @@ console.log(p.interpret("(let ([x (begin '())][boobie (lambda (x y) x)]) boobie)
 console.log(p.interpret("(letrec ([x (lambda (y) y)]) (x 7))").toString() == "7 : int")
 console.log(p.interpret("(let* ([x 34][y x]) y)").toString() == "34 : int");
 console.log(p.interpret("(let* ([x 34][y x][z y]) z)").toString() == "34 : int");
+console.log(p.interpret("(let* ([x 34][y x][z y][l 4][p l]) p)").toString() == "4 : int");
 /**
 -> (val hello 3) 
 3 : int
