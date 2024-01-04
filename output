@@ -1,0 +1,24 @@
+true
+lambda body is  If {
+  condition: Apply { exp: Var { name: '=' }, args: [ [Var], [Num] ] },
+  trueCase: Var { name: 'hi' },
+  falseCase: Apply { exp: Var { name: 'recursion' }, args: [ [Apply] ] }
+}
+lambda body is  Expression {
+  eval: [Function (anonymous)],
+  typeCheck: [Function: compareTypeof]
+}
+lambda body is  Expression {
+  eval: [Function (anonymous)],
+  typeCheck: [Function: arithTypeof]
+}
+lambda body is  If {
+  condition: Apply { exp: Var { name: '=' }, args: [ [Var], [Num] ] },
+  trueCase: Var { name: 'hi' },
+  falseCase: Apply { exp: Var { name: 'recursion' }, args: [ [Apply] ] }
+}
+lambda body is  Expression {
+  eval: [Function (anonymous)],
+  typeCheck: [Function: compareTypeof]
+}
+0 : int

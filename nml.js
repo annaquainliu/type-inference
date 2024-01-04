@@ -231,12 +231,18 @@ class Substitution {
      * @returns {Substitution} this
      */
     compose(theta2) {
-        let domain = Tyvar.union(Object.keys(theta2.mapping), Object.keys(this.mapping));
+        let domain = Object.keys(this.mapping);
+        let snd = Object.keys(theta2.mapping);
+        for (let name of snd) {
+            if (!domain.includes(name)) {
+                domain.push(name);
+            }
+        }
         let mapping = {};
         for (let name of domain) {
             let tau = this.mapping[name];
             if (tau == null) {
-                tau = Tyvar.get(name);
+                tau = new Tyvar(name);
             }
             mapping[name] = tau.tysubst(theta2)
         }
@@ -459,20 +465,31 @@ class Type {
       */
      tysubst(theta) {}
 
-     generalize(set) {
-        let ftvars = this.freetyvars();
-        let diff = new Set();
-        for (let ftvar of ftvars) {
-            if (!set.includes(ftvar) && !diff.has(ftvar)) {
-                diff.add(ftvar);
+     /**
+      * Returns whether tyvars includes tyvar
+      * @param {Array<Tyvar>} tyvars 
+      * @param {Tyvar} tyvar 
+      * @returns {Boolean}
+      */
+     static includes(tyvars, tyvar) {
+        for (let ty of tyvars) {
+            if (ty.typeString == tyvar.typeString) {
+                return true;
             }
         }
-        let generalized = [];
-        for (let ftvar of diff) {
-            generalized.push(ftvar);
-        }
-        return new Forall(generalized, this);
+        return false;
      }
+
+     generalize(set) {
+        let ftvars = this.freetyvars();
+        let diff = [];
+        for (let ftvar of ftvars) {
+            if (!Type.includes(set, ftvar) && !Type.includes(diff, ftvar)) {
+                diff.push(ftvar);
+            }
+        }
+        return new Forall(diff, this);
+    }
 
 
 }
@@ -551,18 +568,17 @@ class Tycon extends Type {
 class Tyvar extends Type {
     static tCounter = 0;
     count;
-    static pastTyvars = {};
 
-    constructor() {
+    constructor(name) {
         super();
-        this.count = Tyvar.tCounter;
-        this.typeString = "'t" + this.count;
-        Tyvar.tCounter++;
-        Tyvar.pastTyvars[this.typeString] = this;
-    }
-
-    static get(name) {
-        return Tyvar.pastTyvars[name];
+        if (name == "" || name == undefined) {
+            this.count = Tyvar.tCounter;
+            this.typeString = "'t" + this.count;
+            Tyvar.tCounter++;
+        }
+        else {
+            this.typeString = name;
+        }
     }
 
     static reset() {
@@ -576,13 +592,11 @@ class Tyvar extends Type {
      * @returns {Array<Tyvar>}
      */
     static union(fst, snd) {
-        let freetyvars1 = new Set(fst);
+        let array = fst;
         for (let tyvar of snd) {
-            freetyvars1.add(tyvar);
-        }
-        let array = [];
-        for (let tyvar of freetyvars1) {
-            array.push(tyvar);
+            if (!Type.includes(array, tyvar)) {
+                array.push(tyvar);
+            }
         }
         return array;
     }
@@ -616,7 +630,7 @@ class Tyvar extends Type {
      * @param {Conapp} conapp 
      */
     solveConapp(conapp) {
-        if (conapp.freetyvars().includes(this)) {
+        if (Type.includes(conapp.freetyvars(), this)) {
             throw new Error(this.typeString + "occurs in " + conapp.typeString);
         }
         let map = {};
@@ -759,7 +773,7 @@ class Forall extends Type {
         let tyvars = this.tau.freetyvars();
         let diff = [];
         for (let tyvar of tyvars) {
-            if (!generalized.includes(tyvar)) {
+            if (!Tycon.includes(generalized, tyvar)) {
                 diff.push(tyvar);
             }
         }
@@ -778,7 +792,7 @@ class Forall extends Type {
         let freetyvars = this.tyvars;
         let sub = {};
         for (let i = 0; i < freetyvars.length; i++) {
-            let alpha = new Tycon("'" + String.fromCharCode(i + 97));
+            let alpha = new Tyvar("'" + String.fromCharCode(i + 97));
             sub[freetyvars[i].typeString] = alpha;
             freetyvars[i] = alpha;
         }

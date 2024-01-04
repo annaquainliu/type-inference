@@ -92,3 +92,5 @@ console.log(p.interpret("(< (* 2 2) (* 4 1))").toString() == "#f : bool");
 let code = "(define recursion (hi) (if (= hi 0) hi (recursion (- hi 1))))"
 console.log(p.interpret(code).toString() == "<function> : (int -> int)");
 console.log(p.interpret("(recursion 1)").toString() == "0 : int")
+console.log(p.interpret("(val-rec mama (moo) (if (> moo 0) (mama (- moo 1)) moo))").toString())
+console.log(p.interpret("(mama 2)").toString())
