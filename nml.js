@@ -919,6 +919,17 @@ class Environments {
                         return new ExpEvalBundle(newList.value, newList);
                     },
                     gamma => new TypeBundle(Type.listtype(new Tyvar("a")), new Trivial()))
+        Environments.makeFunction("or", binaryParams, new Funty([Tycon.boolty, Tycon.boolty], Tycon.boolty), 
+                    rho => {
+                        let result = new Bool(rho["fst"].boolean || rho["snd"].boolean);
+                        return new ExpEvalBundle(result.value, result);
+                    },
+                    gamma => new TypeBundle(Type.boolty, new Trivial()));
+        Environments.makeFunction("and", binaryParams, new Funty([Tycon.boolty, Tycon.boolty], Tycon.boolty),
+                    rho => {
+                        let result = new Bool(rho["fst"].boolean && rho["snd"].boolean);
+                        return new ExpEvalBundle(result.value, result);
+                    });
     }
 
     static predefs() {
@@ -1115,13 +1126,20 @@ class Num extends Literal {
 }
 
 class Bool extends Literal {
+    /**
+     * 
+     * @param {String or Boolean} bool 
+     */
     constructor(bool) {
         super();
+        // bool is of type boolean
         if (bool == true || bool == false) {
             this.value = bool ? "#t" : "#f";
+            this.boolean = bool;
         }
         else {
             this.value = bool;
+            this.boolean = bool == "#t"
         }
         this.type = Tycon.boolty;
     }

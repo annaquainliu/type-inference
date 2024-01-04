@@ -119,3 +119,8 @@ let p = new Parser();
 // console.log(p.interpret("(foldl (lambda (x acc) (+ x acc)) 0 '(1 2 3 4))").toString() == "10 : int");
 // console.log(p.interpret("(exists? (lambda (x) (= 0 (mod x 2))) '(1 2 5 7))").toString())
 console.log(p.interpret("(begin)").toString() == "() : unit")
+console.log(p.interpret("(or #t #t)").toString() == "#t : bool")
+console.log(p.interpret("(or #t #f)").toString() == "#t : bool")
+console.log(p.interpret("(or (= 45 34) (= 34 34))").toString() == "#t : bool")
+console.log(p.interpret("(and (= 45 34) (= 34 34))").toString() == "#f : bool")
+console.log(p.interpret("(and (= 45 45) (= 34 34))").toString() == "#t : bool")
