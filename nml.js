@@ -843,63 +843,66 @@ class Environments {
 
     static initEnvs() {
         let arithTau = new Forall([], new Funty([Tycon.intty, Tycon.intty], Tycon.intty));
-        let tyvar = new Tyvar();
-        let compareTau = new Funty([tyvar, tyvar], Tycon.boolty).generalize([]);
+        let compareTau = new Funty([new Tyvar("a"), new Tyvar("a")], Tycon.boolty).generalize([]);
         let binaryParams = ["fst", "snd"];
-        let binaryTypeof = gamma => {
-            let fstTau = gamma["fst"].typeCheck();
-            let sndTau = gamma["snd"].typeCheck();
-            let constraints = [fstTau.constraint, sndTau.constraint];
-            return Constraint.conjoin(constraints);
-        }
-        let arithTypeof = gamma => {
-            return new TypeBundle(Tycon.intty, binaryTypeof(gamma));
-        };
-        let compareTypeof = gamma => {
-            return new TypeBundle(Tycon.boolty, binaryTypeof(gamma));
-        };
         Environments.makeFunction("+", binaryParams, arithTau, 
                     rho => {
                         let result = new Num(rho["fst"].value + rho["snd"].value);
                         return new ExpEvalBundle(result.value, result);
                     },
-                    arithTypeof);
+                    gamma => new TypeBundle(Tycon.intty, new Trivial()));
         Environments.makeFunction("-", binaryParams, arithTau,
                     rho => {
                         let result = new Num(rho["fst"].value - rho["snd"].value);
                         return new ExpEvalBundle(result.value, result);
                     },
-                    arithTypeof);
+                    gamma => new TypeBundle(Tycon.intty, new Trivial()));
         Environments.makeFunction("/", binaryParams, arithTau,
                     rho => {
                         let result = new Num(rho["fst"].value / rho["snd"].value);
                         return new ExpEvalBundle(result.value, result);
                     },
-                    arithTypeof);
+                    gamma => new TypeBundle(Tycon.intty, new Trivial()));
         Environments.makeFunction("*", binaryParams, arithTau,
                     rho => {
                         let result = new Num(rho["fst"].value * rho["snd"].value);
                         return new ExpEvalBundle(result.value, result);
                     },
-                    arithTypeof);
+                    gamma => new TypeBundle(Tycon.intty, new Trivial()));
         Environments.makeFunction("=", binaryParams, compareTau,
                     rho => {
                         let result = new Bool(rho["fst"].equal(rho["snd"]))
                         return new ExpEvalBundle(result.value, result);
                     },
-                    compareTypeof);
+                    gamma => new TypeBundle(Tycon.boolty, new Trivial()));
         Environments.makeFunction(">", binaryParams, new Forall([], new Funty([Tycon.intty, Tycon.intty], Tycon.boolty)),
                     rho => {
                         let result = new Bool(rho["fst"].value > rho["snd"].value)
                         return new ExpEvalBundle(result.value, result);
                     },
-                    compareTypeof);
+                    gamma => new TypeBundle(Tycon.boolty, new Trivial()));
         Environments.makeFunction("<", binaryParams, new Forall([], new Funty([Tycon.intty, Tycon.intty], Tycon.boolty)),
                     rho => {
                         let result = new Bool(rho["fst"].value < rho["snd"].value)
                         return new ExpEvalBundle(result.value, result);
                     },
-                    compareTypeof);
+                    gamma => new TypeBundle(Tycon.boolty, new Trivial()));
+        Environments.makeFunction("car", ["list"], new Funty([Type.listtype(new Tyvar("a"))], new Tyvar("a")).generalize([]),
+                    rho => {
+                        if (rho["list"] instanceof Nil) {
+                            throw new Error("Runtime error: car applied to empty list.");
+                        }
+                        return new ExpEvalBundle(rho["list"].val1.value, rho["list"].val1);
+                    },
+                    gamma => new TypeBundle(new Tyvar("a"), new Trivial()))
+        Environments.makeFunction("cdr", ["list"], new Funty([Type.listtype(new Tyvar("a"))], Type.listtype(new Tyvar("a"))).generalize([]),
+                    rho => {
+                        if (rho["list"] instanceof Nil) {
+                            throw new Error("Runtime error: cdr applied to empty list.");
+                        }
+                        return new ExpEvalBundle(rho["list"].val2.value, rho["list"].val2);
+                    },
+                    gamma => new TypeBundle(Type.listtype(new Tyvar("a")), new Trivial()))
     }
 
     static makeFunction(name, params, type, evalFun, typeFun) {
