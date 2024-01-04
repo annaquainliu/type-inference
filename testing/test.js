@@ -117,4 +117,5 @@ let p = new Parser();
 // console.log(p.interpret("(cons 3 '(2 4 5))").toString());
 // console.log(p.interpret("(foldr (lambda (x acc) (+ x acc)) 0 '(1 2 3 4))").toString() == "10 : int");
 // console.log(p.interpret("(foldl (lambda (x acc) (+ x acc)) 0 '(1 2 3 4))").toString() == "10 : int");
-console.log(p.interpret("(exists? (lambda (x) (= 0 (mod x 2))) '(1 2 5 7))").toString())
+// console.log(p.interpret("(exists? (lambda (x) (= 0 (mod x 2))) '(1 2 5 7))").toString())
+console.log(p.interpret("(begin)").toString() == "() : unit")

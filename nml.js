@@ -1175,6 +1175,15 @@ class Pair extends Literal {
    
 }
 
+class Unit extends Literal {
+
+    constructor() {
+        super();
+        this.value = "()";
+        this.type = Tycon.unitty;
+    }
+}
+
 class If extends Expression {
 
     // all fields are of type Expression
@@ -1253,7 +1262,8 @@ class Begin extends Expression {
     }
 
     eval(Rho) {
-        let lastResult;
+        let unit = new Unit();
+        let lastResult = new ExpEvalBundle(unit.value, unit);
         for (let e of this.es) {
             lastResult = e.eval(Rho);
         }
@@ -1261,7 +1271,7 @@ class Begin extends Expression {
     }
 
     typeCheck(Gamma) {
-        let lastTau;
+        let lastTau = Tycon.unitty;
         let constraints = [];
         for (let e of this.es) {
             let tauBundle = e.typeCheck(Gamma);
