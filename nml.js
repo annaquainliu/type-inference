@@ -21,6 +21,10 @@ class Parser {
     constructor() {
         Environments.reset();
         Environments.initEnvs();
+        let predefs = Environments.predefs();
+        for (let predef of predefs) {
+            this.interpret(predef);
+        }
     }
 
     interpret(value) {
@@ -842,8 +846,8 @@ class Environments {
     }
 
     static initEnvs() {
-        let arithTau = new Forall([], new Funty([Tycon.intty, Tycon.intty], Tycon.intty));
-        let compareTau = new Funty([new Tyvar("a"), new Tyvar("a")], Tycon.boolty).generalize([]);
+        let arithTau = new Funty([Tycon.intty, Tycon.intty], Tycon.intty);
+        let compareTau = new Funty([new Tyvar("a"), new Tyvar("a")], Tycon.boolty);
         let binaryParams = ["fst", "snd"];
         Environments.makeFunction("+", binaryParams, arithTau, 
                     rho => {
@@ -875,19 +879,25 @@ class Environments {
                         return new ExpEvalBundle(result.value, result);
                     },
                     gamma => new TypeBundle(Tycon.boolty, new Trivial()));
-        Environments.makeFunction(">", binaryParams, new Forall([], new Funty([Tycon.intty, Tycon.intty], Tycon.boolty)),
+        Environments.makeFunction("mod", binaryParams, arithTau,
+                    rho => {
+                        let result = new Num(rho["fst"].value % rho["snd"].value)
+                        return new ExpEvalBundle(result.value, result);
+                    },
+                    gamma => new TypeBundle(Tycon.intty, new Trivial()));
+        Environments.makeFunction(">", binaryParams, new Funty([Tycon.intty, Tycon.intty], Tycon.boolty),
                     rho => {
                         let result = new Bool(rho["fst"].value > rho["snd"].value)
                         return new ExpEvalBundle(result.value, result);
                     },
                     gamma => new TypeBundle(Tycon.boolty, new Trivial()));
-        Environments.makeFunction("<", binaryParams, new Forall([], new Funty([Tycon.intty, Tycon.intty], Tycon.boolty)),
+        Environments.makeFunction("<", binaryParams, new Funty([Tycon.intty, Tycon.intty], Tycon.boolty),
                     rho => {
                         let result = new Bool(rho["fst"].value < rho["snd"].value)
                         return new ExpEvalBundle(result.value, result);
                     },
                     gamma => new TypeBundle(Tycon.boolty, new Trivial()));
-        Environments.makeFunction("car", ["list"], new Funty([Type.listtype(new Tyvar("a"))], new Tyvar("a")).generalize([]),
+        Environments.makeFunction("car", ["list"], new Funty([Type.listtype(new Tyvar("a"))], new Tyvar("a")),
                     rho => {
                         if (rho["list"] instanceof Nil) {
                             throw new Error("Runtime error: car applied to empty list.");
@@ -895,7 +905,7 @@ class Environments {
                         return new ExpEvalBundle(rho["list"].val1.value, rho["list"].val1);
                     },
                     gamma => new TypeBundle(new Tyvar("a"), new Trivial()))
-        Environments.makeFunction("cdr", ["list"], new Funty([Type.listtype(new Tyvar("a"))], Type.listtype(new Tyvar("a"))).generalize([]),
+        Environments.makeFunction("cdr", ["list"], new Funty([Type.listtype(new Tyvar("a"))], Type.listtype(new Tyvar("a"))),
                     rho => {
                         if (rho["list"] instanceof Nil) {
                             throw new Error("Runtime error: cdr applied to empty list.");
@@ -903,6 +913,22 @@ class Environments {
                         return new ExpEvalBundle(rho["list"].val2.value, rho["list"].val2);
                     },
                     gamma => new TypeBundle(Type.listtype(new Tyvar("a")), new Trivial()))
+        Environments.makeFunction("cons", ["item", "list"], new Funty([new Tyvar("a"), Type.listtype(new Tyvar("a"))], Type.listtype(new Tyvar("a"))),
+                    rho => {
+                        let newList = new Pair(rho["item"], rho["list"]);
+                        return new ExpEvalBundle(newList.value, newList);
+                    },
+                    gamma => new TypeBundle(Type.listtype(new Tyvar("a")), new Trivial()))
+    }
+
+    static predefs() {
+        return [
+            "(define null? (xs) (= xs '()))",
+            "(define fst (xs) (car xs))",
+            "(define snd (xs) (car (cdr xs)))",
+            "(define foldl (f acc xs) (if (null? xs) acc (foldl f (f (car xs) acc) (cdr xs))))",
+            "(define foldr (f acc xs) (if (null? xs) acc (f (car xs) (foldr f acc (cdr xs)))))"
+        ]
     }
 
     static makeFunction(name, params, type, evalFun, typeFun) {
@@ -911,7 +937,7 @@ class Environments {
         exp.typeCheck = typeFun;
         let lambda = new Lambda(params, exp);
         Environments.Rho[name] = lambda;
-        Environments.Gamma[name] = type;
+        Environments.Gamma[name] = type.generalize([]);
     }
 
     static freetyvars(Gamma) {
@@ -1007,7 +1033,7 @@ class Apply extends Expression {
         if (!lambdaBundle.exp instanceof Lambda) {
             throw new Error("Cannot apply a non-function value.");
         }
-        let extendedClosure = lambdaBundle.exp.closure;
+        let extendedClosure = Environments.copy(lambdaBundle.exp.closure);
         let paramNames = lambdaBundle.exp.params;
         if (this.args.length != paramNames.length) {
             throw new Error("Mistmatch amount of arguments and parameters");

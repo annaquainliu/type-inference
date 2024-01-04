@@ -99,4 +99,21 @@ console.log(p.interpret("cdr").toString() == "<function> : (forall ['a] ((list '
 console.log(p.interpret("(car '(1 2 3))").toString() == "1 : int")
 console.log(p.interpret("(cdr '(1 2 3))").toString() == "(2 3) : (list int)")
 console.log(p.interpret("(cdr '(1))").toString() == "() : (list int)")
-console.log(p.interpret("(car '(1))").toString() == "1 : int")
+console.log(p.interpret("(car '(1))").toString() == "1 : int");
+console.log(p.interpret("(mod 9 3)").toString() == "0 : int");
+
+// closure test
+console.log(p.interpret("(val hi 3)").toString());
+console.log(p.interpret("(val poo (lambda () hi))").toString());
+console.log(p.interpret("(val hi 5)").toString());
+console.log(p.interpret("(poo)").toString() == "3 : int");
+
+console.log(p.interpret("(null? '())").toString() == "#t : bool");
+console.log(p.interpret("(null? '(1 2 3))").toString() == "#f : bool");
+console.log(p.interpret("(fst '(1 2))").toString() == "1 : int");
+console.log(p.interpret("(snd '(1 2))").toString() == "2 : int");
+
+console.log(p.interpret("(cons 3 '())").toString());
+console.log(p.interpret("(cons 3 '(2 4 5))").toString());
+console.log(p.interpret("(foldr (lambda (x acc) (+ x acc)) 0 '(1 2 3 4))").toString() == "10 : int");
+console.log(p.interpret("(foldl (lambda (x acc) (+ x acc)) 0 '(1 2 3 4))").toString() == "10 : int");
