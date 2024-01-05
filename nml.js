@@ -908,7 +908,7 @@ class Environments {
                         }
                         return new ExpEvalBundle(rho["list"].val1.value, rho["list"].val1);
                     },
-                    gamma => new TypeBundle(new Tyvar("a"), new Trivial()))
+                    gamma => new TypeBundle(gamma["list"].tau.val1.type, new Trivial()))
         Environments.makeFunction("cdr", ["list"], new Funty([Type.listtype(new Tyvar("a"))], Type.listtype(new Tyvar("a"))),
                     rho => {
                         if (rho["list"] instanceof Nil) {
@@ -916,13 +916,13 @@ class Environments {
                         }
                         return new ExpEvalBundle(rho["list"].val2.value, rho["list"].val2);
                     },
-                    gamma => new TypeBundle(Type.listtype(new Tyvar("a")), new Trivial()))
+                    gamma => new TypeBundle(gamma["list"].tau, new Trivial()))
         Environments.makeFunction("cons", ["item", "list"], new Funty([new Tyvar("a"), Type.listtype(new Tyvar("a"))], Type.listtype(new Tyvar("a"))),
                     rho => {
                         let newList = new List(rho["item"], rho["list"]);
                         return new ExpEvalBundle(newList.value, newList);
                     },
-                    gamma => new TypeBundle(Type.listtype(new Tyvar("a")), new Trivial()))
+                    gamma => new TypeBundle(Type.listtype(gamma["item"].tau), new Equal(Type.listtype(gamma["item"].tau), gamma["list"].tau)))
         Environments.makeFunction("or", binaryParams, new Funty([Tycon.boolty, Tycon.boolty], Tycon.boolty), 
                     rho => {
                         let result = new Bool(rho["fst"].boolean || rho["snd"].boolean);
@@ -960,7 +960,8 @@ class Environments {
             "(define null? (xs) (= xs '()))",
             "(define foldl (f acc xs) (if (null? xs) acc (foldl f (f (car xs) acc) (cdr xs))))",
             "(define foldr (f acc xs) (if (null? xs) acc (f (car xs) (foldr f acc (cdr xs)))))",
-            "(define exists? (p? xs) (if (null? xs) #f (if (p? (car xs)) #t (exists? p? (cdr xs)))))"
+            "(define exists? (p? xs) (if (null? xs) #f (if (p? (car xs)) #t (exists? p? (cdr xs)))))",
+            "(define list1 (item) (cons item '()))"
         ]
     }
 
@@ -1078,6 +1079,16 @@ class Apply extends Expression {
         return result;
     }
 
+    /*
+        ty (APPLY (f, actuals)) = 
+             (case typesof (f :: actuals, Gamma)
+                of ([], _) => raise InternalError "pattern match"
+                 | (funty :: actualtypes, c) =>
+                      let val rettype = freshtyvar ()
+                      in  (rettype, c /\ (funty ~ funtype (actualtypes, rettype)
+                                                                              ))
+                      end)
+    */
     typeCheck(Gamma) {
         let funtyAndC = this.exp.typeCheck(Gamma);
         let taus = [funtyAndC.tau];
@@ -1297,14 +1308,12 @@ class Var extends Expression {
 
     typeCheck(Gamma) {
         let type_scheme = Gamma[this.name];
-        let tyvars = []
         let sub = {};
         for (let tyvar of type_scheme.tyvars) {
             let newTyvar = new Tyvar();
-            tyvars.push(newTyvar);
             sub[tyvar.typeString] = newTyvar;
         }
-        let newType = new Forall(tyvars, type_scheme.tau.tysubst(new Substitution(sub)));
+        let newType = type_scheme.tau.tysubst(new Substitution(sub));
         return new TypeBundle(newType, new Trivial());
     }
 }
@@ -1491,7 +1500,8 @@ class Letrec extends Let {
             constraints.push(new Equal(taus[i], tyvars[i]));
         }
         let constraint = Constraint.conjoin(constraints);
-        return this.solveRestWithC(constraint, Gamma, taus, names);
+        let final = this.solveRestWithC(constraint, Gamma, taus, names);
+        return final;
     }
 }
 
@@ -1588,6 +1598,21 @@ class ValRec extends Definition {
             throw new Error("val-rec/define not given a lambda expression!");
         }
     }
+
+    /**
+     * 
+     *
+        let val alpha    = freshtyvar ()
+            val Gamma'   = bindtyscheme (x, FORALL ([],
+                                            alpha), Gamma)
+            val (tau, c) = typeof (e, Gamma')
+            val theta    = solve (c /\ alpha ~ tau)
+            val sigma    = generalize (tysubst theta alpha,
+                                    freetyvarsGamma Gamma)
+        in  (bindtyscheme (x, sigma, Gamma),
+                                    typeSchemeString sigma)
+        end
+     */
     eval(Gamma, Rho) {
         // evaluation
         let lambda = this.exp.eval({});
@@ -1607,7 +1632,7 @@ class ValRec extends Definition {
         return new DefEvalBundle(this.name, sigma);
     }
 }
-
+ 
 module.exports = {Constraint : Constraint, And : And, Equal : Equal, Type : Type, Tycon : Tycon, Trivial : Trivial,
                   Parser: Parser, Forall : Forall, Conapp : Conapp, Tyvar : Tyvar, Substitution : Substitution,
                   Environments : Environments};
