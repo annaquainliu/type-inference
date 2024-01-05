@@ -1436,7 +1436,7 @@ class Letrec extends Let {
         for (let name of names) {
             let tyvar = new Tyvar();
             tyvars.push(tyvar);
-            gammaPrime[name] = tyvar;
+            gammaPrime[name] = new Forall([], tyvar);
         }
         let taus = [];
         let constraints = [];
@@ -1530,7 +1530,11 @@ class Val extends Definition {
         let sigma = newTau.generalize(Environments.freetyvars(Gamma));
         Gamma[this.name] = sigma;
         Rho[this.name] = value.exp;
-        return new DefEvalBundle(value.val, sigma);
+        let name = value.val;
+        if (this.name != "it" && value.exp instanceof Lambda) {
+            name = this.name;
+        }
+        return new DefEvalBundle(name, sigma);
     }
 }
 
@@ -1558,7 +1562,7 @@ class ValRec extends Definition {
         let subbedTau = alpha.tysubst(theta);
         let sigma = subbedTau.generalize(Environments.freetyvars(Gamma));
         Gamma[this.name] = sigma;
-        return new DefEvalBundle(lambda.val, sigma);
+        return new DefEvalBundle(this.name, sigma);
     }
 }
 
