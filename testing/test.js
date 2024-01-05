@@ -110,8 +110,8 @@ console.log(p.interpret("(poo)").toString() == "3 : int");
 
 console.log(p.interpret("(null? '())").toString() == "#t : bool");
 console.log(p.interpret("(null? '(1 2 3))").toString() == "#f : bool");
-console.log(p.interpret("(fst '(1 2))").toString() == "1 : int");
-console.log(p.interpret("(snd '(1 2))").toString() == "2 : int");
+// console.log(p.interpret("(fst '(1 2))").toString() == "1 : int");
+// console.log(p.interpret("(snd '(1 2))").toString() == "2 : int");
 
 console.log(p.interpret("(cons 3 '())").toString());
 console.log(p.interpret("(cons 3 '(2 4 5))").toString());
@@ -127,3 +127,12 @@ console.log(p.interpret("(and (= 45 45) (= 34 34))").toString() == "#t : bool")
 
 console.log(p.interpret("(letrec ([listOrdered? (lambda (xs op?) (if (or (null? xs) (null? (cdr xs))) #t (and (op? (car xs) (car (cdr xs))) (listOrdered? (cdr xs) op?))))][call (lambda () (listOrdered? '(1 2 4 90) <))]) (call))").toString() == "#t : bool")
 console.log(p.interpret("(lambda (xs) (foldl (lambda (a b) (if (> a b) a b)) (car xs) xs)").toString() == "<function> : ((list int) -> int)");
+console.log(p.interpret("(pair 3 4)").toString());
+console.log(p.interpret("pair").toString() == "<function> : (forall ['a 'b] ('a 'b -> (pair 'a 'b)))");
+console.log(p.interpret("snd").toString() == "<function> : (forall ['a 'b] ((pair 'a 'b) -> 'b))");
+console.log(p.interpret("fst").toString() == "<function> : (forall ['a 'b] ((pair 'a 'b) -> 'a))");
+console.log(p.interpret("(fst (pair 3 4))").toString());
+console.log(p.interpret("(snd (pair 3 4))").toString());
+console.log(p.interpret("(snd (if #t (pair 3 4) (pair 5 6)))").toString());
+
+console.log(p.interpret("(define has-predecessor-in? (node graph) (if (null? graph) #f (if (= node (snd (car graph))) #t (has-predecessor-in? node (cdr graph)))))").toString())

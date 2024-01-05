@@ -146,7 +146,7 @@ class Parser {
         if (item == ")") {
             return new Nil();
         }
-        return new Pair(this.tokenListLiterals(item), this.tokenPair());
+        return new List(this.tokenListLiterals(item), this.tokenPair());
     }
 
     tokenListLiterals(exp) {
@@ -428,6 +428,10 @@ class Type {
 
     static listtype(tau) {
         return new Conapp(new Tycon("list"), [tau]);
+    }
+
+    static pairtype(tau1, tau2) {
+        return new Conapp(new Tycon("pair"), [tau1, tau2]);
     }
 
     /**
@@ -915,7 +919,7 @@ class Environments {
                     gamma => new TypeBundle(Type.listtype(new Tyvar("a")), new Trivial()))
         Environments.makeFunction("cons", ["item", "list"], new Funty([new Tyvar("a"), Type.listtype(new Tyvar("a"))], Type.listtype(new Tyvar("a"))),
                     rho => {
-                        let newList = new Pair(rho["item"], rho["list"]);
+                        let newList = new List(rho["item"], rho["list"]);
                         return new ExpEvalBundle(newList.value, newList);
                     },
                     gamma => new TypeBundle(Type.listtype(new Tyvar("a")), new Trivial()))
@@ -929,14 +933,31 @@ class Environments {
                     rho => {
                         let result = new Bool(rho["fst"].boolean && rho["snd"].boolean);
                         return new ExpEvalBundle(result.value, result);
-                    });
+                    },
+                    gamma => new TypeBundle(Type.boolty, new Trivial()));
+        Environments.makeFunction("pair", binaryParams, new Funty([new Tyvar("a"), new Tyvar("b")], Type.pairtype(new Tyvar("a"), new Tyvar("b"))), 
+                    rho => {
+                        let pair = new Pair(rho["fst"], rho["snd"]);
+                        return new ExpEvalBundle(pair.value, pair);
+                    },
+                    gamma => new TypeBundle(Type.pairtype(gamma["fst"].tau, gamma["snd"].tau), new Trivial()))
+        Environments.makeFunction("fst", ["pair"], new Funty([Tycon.pairtype(new Tyvar("a"), new Tyvar("b"))], new Tyvar("a")), 
+                    rho => {
+                        let fst = rho["pair"].val1;
+                        return new ExpEvalBundle(fst.value, fst);
+                    },
+                    gamma => new TypeBundle(gamma["pair"].tau.types[0], new Trivial()));
+        Environments.makeFunction("snd", ["pair"], new Funty([Tycon.pairtype(new Tyvar("a"), new Tyvar("b"))], new Tyvar("b")), 
+                    rho => {
+                        let snd = rho["pair"].val2;
+                        return new ExpEvalBundle(snd.value, snd);
+                    },
+                    gamma => new TypeBundle(gamma["pair"].tau.types[1], new Trivial()));
     }
 
     static predefs() {
         return [
             "(define null? (xs) (= xs '()))",
-            "(define fst (xs) (car xs))",
-            "(define snd (xs) (car (cdr xs)))",
             "(define foldl (f acc xs) (if (null? xs) acc (foldl f (f (car xs) acc) (cdr xs))))",
             "(define foldr (f acc xs) (if (null? xs) acc (f (car xs) (foldr f acc (cdr xs)))))",
             "(define exists? (p? xs) (if (null? xs) #f (if (p? (car xs)) #t (exists? p? (cdr xs)))))"
@@ -1159,7 +1180,7 @@ class Nil extends Literal {
 }
 
 /** FOR LISTS */
-class Pair extends Literal {
+class List extends Literal {
 
     eval(Rho) {
         return new ExpEvalBundle(this.value, this);
@@ -1174,7 +1195,7 @@ class Pair extends Literal {
     /**
      * 
      * @param {Literal} val1 : expected to be type of element in list
-     * @param {Pair} val2 : expected to be a listtype
+     * @param {List} val2 : expected to be a listtype
      */
     constructor(val1, val2) {
         super();
@@ -1191,6 +1212,27 @@ class Pair extends Literal {
         this.type = val2.type; // dummy type 
     }
    
+}
+
+class Pair extends Literal {
+
+    /**
+     * @param {Literal} val1 
+     * @param {Literal} val2 
+     */
+    constructor(val1, val2) {
+        super();
+        this.val1 = val1;
+        this.val2 = val2;
+        this.value = "(" + val1.value + " . " + val2.value + ")";
+        this.type = Tycon.pairtype(this.val1.type, this.val2.type); // dummy type
+    }
+
+    typeCheck(Gamma) {
+        let tau1 = this.val1.typeCheck(Gamma);
+        let tau2 = this.val2.typeCheck(Gamma);
+        return new TypeBundle(Tycon.pairtype(tau1.tau, tau2.tau), new And(tau1.constraint, tau2.constraint));
+    }
 }
 
 class Unit extends Literal {
