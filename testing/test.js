@@ -149,4 +149,4 @@ console.log(p.interpret("(define has-predecessor-in? (node graph) (if (null? gra
 //  (check-principal-type node-without-predecessors (forall ('a) ((list (pair 'a 'a)) -> (list 'a))))
 // console.log(p.interpret("(val nwop-in-edges (letrec ((nwop-in-edges (lambda (edges) (if (null? edges) '() (if (has-predecessor-in? (fst (car edges)) edges) (nwop-in-edges (cdr edges)) (list1 (fst (car edges)))))))) nwop-in-edges))").toString())
 // console.log(p.interpret("(define node-without-predecessors (graph) (nwop-in-edges graph))").toString())
-console.log(p.interpret("(val node-without-predecessors (lambda (graph) (letrec ((nwop-in-edges (lambda (edges) (if (null? edges) '() (if (has-predecessor-in? (fst (car edges)) graph) (nwop-in-edges (cdr edges)) (list1 (fst (car edges)))))))) (nwop-in-edges graph))))").toString())
+console.log(p.interpret("(define node-without-predecessors (graph) (letrec ((nwop-in-edges (lambda (edges) (if (null? edges) '() (if (has-predecessor-in? (fst (car edges)) graph) (nwop-in-edges (cdr edges)) (list1 (fst (car edges)))))))) (nwop-in-edges graph)))").toString())

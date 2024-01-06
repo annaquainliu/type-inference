@@ -1,0 +1,33 @@
+ACTUAL:
+apply: TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ ((list 't399) -> bool) ~ ('t398 -> 't400)
+apply: TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ ((list 't406) -> 't406) ~ ('t398 -> 't407)
+apply: TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ ((list 't406) -> 't406) ~ ('t398 -> 't407) /\ TRIVIAL /\ ((pair 't404 't405) -> 't404) ~ ('t407 -> 't408)
+apply: TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ ((list 't406) -> 't406) ~ ('t398 -> 't407) /\ TRIVIAL /\ ((pair 't404 't405) -> 't404) ~ ('t407 -> 't408) /\ TRIVIAL /\ TRIVIAL /\ ('t402 (list (pair 't403 't402)) -> bool) ~ ('t408 't396 -> 't409)
+apply: TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ ((list 't410) -> (list 't410)) ~ ('t398 -> 't411)
+apply: TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ ((list 't410) -> (list 't410)) ~ ('t398 -> 't411) /\ TRIVIAL /\ 't397 ~ ('t411 -> 't412)
+apply: TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ ((list 't416) -> 't416) ~ ('t398 -> 't417)
+apply: TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ ((list 't416) -> 't416) ~ ('t398 -> 't417) /\ TRIVIAL /\ ((pair 't414 't415) -> 't414) ~ ('t417 -> 't418)
+apply: TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ ((list 't416) -> 't416) ~ ('t398 -> 't417) /\ TRIVIAL /\ ((pair 't414 't415) -> 't414) ~ ('t417 -> 't418) /\ TRIVIAL /\ ('t413 -> (list 't413)) ~ ('t418 -> 't419)
+lambda: TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ ((list 't399) -> bool) ~ ('t398 -> 't400) /\ TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ ((list 't406) -> 't406) ~ ('t398 -> 't407) /\ TRIVIAL /\ ((pair 't404 't405) -> 't404) ~ ('t407 -> 't408) /\ TRIVIAL /\ TRIVIAL /\ ('t402 (list (pair 't403 't402)) -> bool) ~ ('t408 't396 -> 't409) /\ TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ ((list 't410) -> (list 't410)) ~ ('t398 -> 't411) /\ TRIVIAL /\ 't397 ~ ('t411 -> 't412) /\ TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ ((list 't416) -> 't416) ~ ('t398 -> 't417) /\ TRIVIAL /\ ((pair 't414 't415) -> 't414) ~ ('t417 -> 't418) /\ TRIVIAL /\ ('t413 -> (list 't413)) ~ ('t418 -> 't419) /\ 't409 ~ bool /\ 't412 ~ 't419 /\ 't400 ~ bool /\ (list 't401) ~ 't412
+apply: TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ ((list (pair 't408 't420)) -> (list 't408)) ~ ('t396 -> 't421)
+letrec: ((list (pair 't408 't420)) -> (list 't408)) ~ ('t396 -> 't421) /\ 't396 ~ (list (pair 't403 't408)) /\ TRIVIAL
+lambda: TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ ((list (pair 't408 't420)) -> (list 't408)) ~ ('t396 -> 't421) /\ 't396 ~ (list (pair 't403 't408)) /\ TRIVIAL
+final: TRIVIAL /\ TRIVIAL /\ TRIVIAL /\ ((list (pair 't408 't420)) -> (list 't408)) ~ ('t396 -> 't421) /\ 't396 ~ (list (pair 't403 't408)) /\ TRIVIAL /\ 't395 ~ ('t396 -> 't421)
+node-without-predecessors : (forall ['a] ((list (pair 'a 'a)) -> (list 'a)))
+
+MINE:
+
+apply:  null? :  ((list 't65) -> bool) ~ ('t64 -> 't66) /\ T /\ T /\ T
+apply:  car :  ((list 't71) -> 't71) ~ ('t64 -> 't72) /\ T /\ T /\ T
+apply:  fst :  ((pair 't69 't70) -> 't69) ~ ('t72 -> 't73) /\ ((list 't71) -> 't71) ~ ('t64 -> 't72) /\ T /\ T /\ T /\ T /\ T
+apply:  has-predecessor-in? :  ('t67 (list (pair 't68 't67)) -> bool) ~ ('t73 't62 -> 't74) /\ T /\ ((pair 't69 't70) -> 't69) ~ ('t72 -> 't73) /\ ((list 't71) -> 't71) ~ ('t64 -> 't72) /\ T /\ T /\ T /\ T /\ T /\ T /\ T
+apply:  cdr :  ((list 't75) -> (list 't75)) ~ ('t64 -> 't76) /\ T /\ T /\ T
+apply:  nwop-in-edges :  't63 ~ ('t76 -> 't77) /\ ((list 't75) -> (list 't75)) ~ ('t64 -> 't76) /\ T /\ T /\ T /\ T /\ T
+apply:  car :  ((list 't81) -> 't81) ~ ('t64 -> 't82) /\ T /\ T /\ T
+apply:  fst :  ((pair 't79 't80) -> 't79) ~ ('t82 -> 't83) /\ ((list 't81) -> 't81) ~ ('t64 -> 't82) /\ T /\ T /\ T /\ T /\ T
+apply:  list1 :  ('t78 -> (list 't78)) ~ ('t83 -> 't84) /\ ((pair 't79 't80) -> 't79) ~ ('t82 -> 't83) /\ ((list 't81) -> 't81) ~ ('t64 -> 't82) /\ T /\ T /\ T /\ T /\ T /\ T /\ T
+lambda:  ('t78 -> (list 't78)) ~ ('t83 -> 't84) /\ ((pair 't79 't80) -> 't79) ~ ('t82 -> 't83) /\ ((list 't81) -> 't81) ~ ('t64 -> 't82) /\ T /\ T /\ T /\ T /\ T /\ T /\ T /\ 't63 ~ ('t76 -> 't77) /\ ((list 't75) -> (list 't75)) ~ ('t64 -> 't76) /\ T /\ T /\ T /\ T /\ T /\ ('t67 (list (pair 't68 't67)) -> bool) ~ ('t73 't62 -> 't74) /\ T /\ ((pair 't69 't70) -> 't69) ~ ('t72 -> 't73) /\ ((list 't71) -> 't71) ~ ('t64 -> 't72) /\ T /\ T /\ T /\ T /\ T /\ T /\ T /\ 't77 ~ 't84 /\ 't74 ~ bool /\ T /\ T /\ ((list 't65) -> bool) ~ ('t64 -> 't66) /\ T /\ T /\ T /\ (list 't60) ~ 't77 /\ 't66 ~ bool /\ T
+apply:  nwop-in-edges :  ((list (pair 't85 't86)) -> (list 't85)) ~ ('t62 -> 't87) /\ T /\ T /\ T
+letrec:  ((list (pair 't85 't86)) -> (list 't85)) ~ ('t62 -> 't87) /\ T /\ T /\ T /\ T
+lambda:  ((list (pair 't85 't86)) -> (list 't85)) ~ ('t62 -> 't87) /\ T /\ T /\ T /\ T
+final:  ((list (pair 't85 't86)) -> (list 't85)) ~ ('t62 -> 't87) /\ T /\ T /\ T /\ T /\ 't61 ~ ('t62 -> 't87)

@@ -375,7 +375,7 @@ class And extends Constraint {
     }
 
     freetyvars() {
-        return Tyvar.union(c1.freetyvars(), c2.freetyvars());
+        return Tyvar.union(this.c1.freetyvars(), this.c2.freetyvars());
     }
 }
 
@@ -1091,7 +1091,7 @@ class Apply extends Expression {
     */
     typeCheck(Gamma) {
         let funtyAndC = this.exp.typeCheck(Gamma);
-        let taus = [funtyAndC.tau];
+        let taus = [];
         let constraints = [funtyAndC.constraint];
         for (let arg of this.args) {
             let tyC = arg.typeCheck(Gamma);
@@ -1099,9 +1099,10 @@ class Apply extends Expression {
             constraints.push(tyC.constraint);
         }
         let tyvar = new Tyvar();
-        let funty = new Funty(taus.slice(1), tyvar);
-        constraints.push(new Equal(taus[0], funty));
+        let funty = new Funty(taus, tyvar);
+        constraints.push(new Equal(funtyAndC.tau, funty));
         let bigC = Constraint.conjoin(constraints);
+        console.log("apply: ", this.exp.name, ": ", bigC.toString());
         return new TypeBundle(tyvar, bigC);
     }
 }
@@ -1384,6 +1385,7 @@ class Lambda extends Expression {
             tyvars.push(tyvar);
         }
         let body = this.body.typeCheck(newGamma);
+        console.log("lambda: ", body.constraint.toString());
         return new TypeBundle(new Funty(tyvars, body.tau), body.constraint);
     }
 }
@@ -1430,7 +1432,7 @@ class Let extends Expression {
 
     solveRestWithC(c, Gamma, types, names) {
         let theta = c.solve();
-        let domTheta = Object.keys(theta);
+        let domTheta = Object.keys(theta.mapping);
         let freetyvars = Environments.freetyvars(Gamma);
         let inter = [];
         for (let freetyvar of freetyvars) {
@@ -1501,6 +1503,7 @@ class Letrec extends Let {
         }
         let constraint = Constraint.conjoin(constraints);
         let final = this.solveRestWithC(constraint, Gamma, taus, names);
+        console.log("letrec: ", final.constraint.toString());
         return final;
     }
 }
@@ -1617,7 +1620,7 @@ class ValRec extends Definition {
         // evaluation
         let lambda = this.exp.eval({});
         Rho[this.name] = lambda.exp;
-        lambda.exp.closure = Rho;
+        lambda.exp.closure = Environments.copy(Rho);
         
         //type inference
         let alpha = new Tyvar();
@@ -1625,6 +1628,8 @@ class ValRec extends Definition {
         gammaPrime[this.name] = new Forall([], alpha);
         let type = this.exp.typeCheck(gammaPrime);
         let constraint = new And(type.constraint, new Equal(alpha, type.tau));
+        console.log();
+        console.log("final: ", constraint.toString());
         let theta = constraint.solve();
         let subbedTau = alpha.tysubst(theta);
         let sigma = subbedTau.generalize(Environments.freetyvars(Gamma));
