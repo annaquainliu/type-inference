@@ -133,7 +133,7 @@ class Parser {
             return new Bool(exp);
         }
         else if (exp[0] == "'") {
-            return new Sym(exp);
+            return new Sym(exp.substring(1));
         }
         else if (/^-?\d+$/.test(exp)) { 
             return new Num(exp);
@@ -953,6 +953,12 @@ class Environments {
                         return new ExpEvalBundle(snd.value, snd);
                     },
                     gamma => new TypeBundle(gamma["pair"].tau.types[1], new Trivial()));
+        Environments.makeFunction("not", ["bool"], new Funty([Tycon.boolty], Tycon.boolty), 
+                    rho => {
+                        let result = new Bool(!rho["bool"].boolean);
+                        return new ExpEvalBundle(result.value, result);
+                    },
+                    gamma => new TypeBundle(Type.boolty, new Trivial()));
     }
 
     static predefs() {
@@ -961,7 +967,11 @@ class Environments {
             "(define foldl (f acc xs) (if (null? xs) acc (foldl f (f (car xs) acc) (cdr xs))))",
             "(define foldr (f acc xs) (if (null? xs) acc (f (car xs) (foldr f acc (cdr xs)))))",
             "(define exists? (p? xs) (if (null? xs) #f (if (p? (car xs)) #t (exists? p? (cdr xs)))))",
-            "(define list1 (item) (cons item '()))"
+            "(define list1 (item) (cons item '()))",
+            "(define revapp (xs ys) (if (null? xs) ys (revapp (cdr xs) (cons (car xs) ys))))",
+            "(define caar (xs) (car (car xs)))",
+            "(define cdar (xs) (cdr (car xs)))",
+            "(define cadr (xs) (car (cdr xs)))"
         ]
     }
 
@@ -1102,7 +1112,6 @@ class Apply extends Expression {
         let funty = new Funty(taus, tyvar);
         constraints.push(new Equal(funtyAndC.tau, funty));
         let bigC = Constraint.conjoin(constraints);
-        console.log("apply: ", this.exp.name, ": ", bigC.toString());
         return new TypeBundle(tyvar, bigC);
     }
 }
@@ -1139,7 +1148,7 @@ class Literal extends Expression {
 class Sym extends Literal {
     constructor(value) {
         super();
-        this.value = value.substring(1);
+        this.value = value;
         this.type = Tycon.symty;
     }
 }
@@ -1385,7 +1394,6 @@ class Lambda extends Expression {
             tyvars.push(tyvar);
         }
         let body = this.body.typeCheck(newGamma);
-        console.log("lambda: ", body.constraint.toString());
         return new TypeBundle(new Funty(tyvars, body.tau), body.constraint);
     }
 }
@@ -1503,7 +1511,6 @@ class Letrec extends Let {
         }
         let constraint = Constraint.conjoin(constraints);
         let final = this.solveRestWithC(constraint, Gamma, taus, names);
-        console.log("letrec: ", final.constraint.toString());
         return final;
     }
 }
@@ -1628,8 +1635,6 @@ class ValRec extends Definition {
         gammaPrime[this.name] = new Forall([], alpha);
         let type = this.exp.typeCheck(gammaPrime);
         let constraint = new And(type.constraint, new Equal(alpha, type.tau));
-        console.log();
-        console.log("final: ", constraint.toString());
         let theta = constraint.solve();
         let subbedTau = alpha.tysubst(theta);
         let sigma = subbedTau.generalize(Environments.freetyvars(Gamma));

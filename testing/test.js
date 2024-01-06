@@ -135,18 +135,12 @@ let p = new Parser();
 // console.log(p.interpret("(snd (pair 3 4))").toString() == "4 : int");
 // console.log(p.interpret("(snd (if #t (pair 3 4) (pair 5 6)))").toString() == "4 : int");
 console.log(p.interpret("(define has-predecessor-in? (node graph) (if (null? graph) #f (if (= node (snd (car graph))) #t (has-predecessor-in? node (cdr graph)))))").toString() == "has-predecessor-in? : (forall ['a 'b] ('a (list (pair 'b 'a)) -> bool))")
-// console.log(p.interpret("(val hi '())").toString());
-// console.log(p.interpret("(if #t hi '(1 2 3))").toString());
-// has-predecessor-in? : ('1 (list (pair '2 '1)) -> bool)
-// graph = edges = (list (pair '3 '4))
-// (has-predecessor-in? (fst (car edges)) graph)
-
-// '3 ~ '1, (list (pair '3 '4)) ~ (list (pair '2 '1))
-// '3 ~ '3, (list (pair '3 '4)) ~ (list (pair '2 '3))
-// '3 ~ '3, (list (pair '2 '2)) ~ (list (pair '2 '2))
-
-// (list (pair '3 '4)) ~ '2 /\ '1 ~ ('2 -> '5)
-//  (check-principal-type node-without-predecessors (forall ('a) ((list (pair 'a 'a)) -> (list 'a))))
-// console.log(p.interpret("(val nwop-in-edges (letrec ((nwop-in-edges (lambda (edges) (if (null? edges) '() (if (has-predecessor-in? (fst (car edges)) edges) (nwop-in-edges (cdr edges)) (list1 (fst (car edges)))))))) nwop-in-edges))").toString())
-// console.log(p.interpret("(define node-without-predecessors (graph) (nwop-in-edges graph))").toString())
-console.log(p.interpret("(define node-without-predecessors (graph) (letrec ((nwop-in-edges (lambda (edges) (if (null? edges) '() (if (has-predecessor-in? (fst (car edges)) graph) (nwop-in-edges (cdr edges)) (list1 (fst (car edges)))))))) (nwop-in-edges graph)))").toString())
+console.log(p.interpret("(define node-without-predecessors (graph) (letrec ((nwop-in-edges (lambda (edges) (if (null? edges) '() (if (has-predecessor-in? (fst (car edges)) graph) (nwop-in-edges (cdr edges)) (list1 (fst (car edges)))))))) (nwop-in-edges graph)))").toString() == "node-without-predecessors : (forall ['a] ((list (pair 'a 'a)) -> (list 'a)))")
+console.log(p.interpret("(define appears-in? (node graph) (if (null? graph) #f (if (or (= node (fst (car graph))) (= node (snd (car graph)))) #t (appears-in? node (cdr graph)))))").toString() == "appears-in? : (forall ['a] ('a (list (pair 'a 'a)) -> bool))")
+console.log(p.interpret("(define successors (node graph) (letrec ((nodesucc (lambda (graph) (if (null? graph) '() (if (= node (fst (car graph))) (cons (snd (car graph)) (nodesucc (cdr graph))) (nodesucc (cdr graph))))))) (nodesucc graph)))").toString() == "successors : (forall ['a 'b] ('a (list (pair 'a 'b)) -> (list 'b)))");
+console.log(p.interpret("(define remove-node (node graph) (letrec ((rem (lambda (graph) (if (null? graph) '() (if (or (= node (fst (car graph))) (= node (snd (car graph)))) (rem (cdr graph)) (cons (car graph) (rem (cdr graph)))))))) (rem graph)))").toString() == "remove-node : (forall ['a] ('a (list (pair 'a 'a)) -> (list (pair 'a 'a))))")
+console.log(p.interpret("(define member? (x ps) (if (null? ps) #f (if (= x (car ps)) #t (member? x (cdr ps)))))").toString() == "member? : (forall ['a] ('a (list 'a) -> bool))");
+console.log(p.interpret("(define find-a-cycle (graph) (letrec ((visit (lambda (node visited) (if (member? node visited) (cons node '()) (let ((partial-cycle (visit-list (successors node graph) (cons node visited)))) (if (null? partial-cycle) '() (cons node (cons '-> partial-cycle))))))) (visit-list (lambda (nodes visited) (if (null? nodes) '() (let ((partial-cycle (visit (car nodes) visited))) (if (not (null? partial-cycle)) partial-cycle (visit-list (cdr nodes) visited))))))) (if (null? graph) '() (let ((maybe-cycle (visit (fst (car graph)) '()))) (if (not (null? maybe-cycle)) maybe-cycle (find-a-cycle (cdr graph)))))))").toString() == "find-a-cycle : ((list (pair sym sym)) -> (list sym))")
+console.log(p.interpret("(define tsort (graph) (letrec ((aux (lambda  (graph lost-successors answer) (if (null? lost-successors) (if (null? graph) (revapp answer '()) (let ((node (node-without-predecessors graph))) (if (not (null? node)) (let ((node (car node))) (aux (remove-node node graph) (successors node graph) (cons node answer))) (cons 'The-graph-has-a-cycle: (find-a-cycle graph))))) (aux graph (cdr lost-successors) (if (appears-in? (car lost-successors) graph) answer (cons (car lost-successors) answer))))))) (aux graph '() '())))").toString() == "tsort : ((list (pair sym sym)) -> (list sym))")
+console.log(p.interpret("(define graph-of-edge-list (list) (if (null? list) '() (cons (pair (caar list) (car (cdar list))) (graph-of-edge-list (cdr list)))))").toString() == "graph-of-edge-list : (forall ['a] ((list (list 'a)) -> (list (pair 'a 'a))))")
+console.log(p.interpret("(tsort (graph-of-edge-list '((a b) (b c) (b e) (d e))))").toString());
