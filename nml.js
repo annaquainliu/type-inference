@@ -971,7 +971,16 @@ class Environments {
             "(define revapp (xs ys) (if (null? xs) ys (revapp (cdr xs) (cons (car xs) ys))))",
             "(define caar (xs) (car (car xs)))",
             "(define cdar (xs) (cdr (car xs)))",
-            "(define cadr (xs) (car (cdr xs)))"
+            "(define cadr (xs) (car (cdr xs)))",
+            "(define list1 (x)               (cons x '()))",
+            "(define list2 (x y)             (cons x (list1 y)))"
+            , "(define list3 (x y z)           (cons x (list2 y z)))"
+            , "(define list4 (x y z a)         (cons x (list3 y z a)))"
+            , "(define list5 (x y z a b)       (cons x (list4 y z a b)))"
+            , "(define list6 (x y z a b c)     (cons x (list5 y z a b c)))"
+            , "(define list7 (x y z a b c d)   (cons x (list6 y z a b c d)))"
+            , "(define list8 (x y z a b c d e) (cons x (list7 y z a b c d e)))"
+            , "(define o (f g) (lambda (x) (f (g x))))"
         ]
     }
 
