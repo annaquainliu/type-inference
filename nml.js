@@ -1,18 +1,6 @@
 // page 405 : Expression evaluations
 // page 421 : Type Inference Rules
 
-function main() {
-    // page 404 : nml expressions
-    const input = document.getElementById("code");
-    const interpretButton = document.getElementById("interpret")
-    interpretButton.addEventListener("click", () => {
-        let parser = new Parser();
-        parser.interpret(input.value);
-    });
-}
-
-// main();
-
 class Parser {
     queue = [];
     expKeywords = ["let", "let*", "letrec", "if", "begin", "lambda"];
@@ -60,7 +48,7 @@ class Parser {
             this.queue.pop();
             return this.tokenDefinition(this.queue.pop());
         }
-        return new Val("it", this.tokenize(this.queue.pop()));
+        return new Exp("it", this.tokenize(this.queue.pop()));
     }
 
     tokenDefinition(def) {
@@ -70,12 +58,9 @@ class Parser {
         else if (def == "val-rec") {
             return new ValRec(this.queue.pop(), this.tokenLambda());
         }
-        else if (def == "define") {
+        else {
             return new Define(this.queue.pop(), this.tokenLambda());
         }   
-        else {
-            return new Val("it", this.tokenize(def));
-        }
     }
 
     /**
@@ -1042,6 +1027,10 @@ class Expression {
     equal(snd) {
         throw new Error("Compared expressions for equality.");
     }
+
+    conclusion(typebundle) {}
+
+    abstractSyntax() {}
 }
 
 class TypeBundle {
@@ -1098,16 +1087,6 @@ class Apply extends Expression {
         return result;
     }
 
-    /*
-        ty (APPLY (f, actuals)) = 
-             (case typesof (f :: actuals, Gamma)
-                of ([], _) => raise InternalError "pattern match"
-                 | (funty :: actualtypes, c) =>
-                      let val rettype = freshtyvar ()
-                      in  (rettype, c /\ (funty ~ funtype (actualtypes, rettype)
-                                                                              ))
-                      end)
-    */
     typeCheck(Gamma) {
         let funtyAndC = this.exp.typeCheck(Gamma);
         let taus = [];
@@ -1549,6 +1528,8 @@ class Definition {
     exp;
     name;
 
+    static GammaChar = "Γ";
+    static Turnstile = "⊢";
     /**
      * @param {String} name
      * @param {Expression} exp 
@@ -1562,6 +1543,19 @@ class Definition {
     }
 
     eval(Gamma, Rho) {}
+
+    /**
+     * Returns the conclusion in the operational semantics of the given definition
+     * @param {TypeBundle}
+     * @returns {String}
+     */
+    conclusion(typebundle) {}
+
+    /**
+     * Returns the string of the abstract syntax of the definition
+     * @returns {String}
+     */
+    abstractSyntax() {}
 
 }
 
@@ -1579,6 +1573,15 @@ class DefEvalBundle {
 
     toString() {
         return this.value + " : " + this.tau.typeString;
+    }
+}
+
+class Exp extends Definition {
+
+    eval(Gamma, Rho) {
+        let result = new Val("it", this.exp).eval(Gamma, Rho);
+        result.value = result.expValue;
+        return result;
     }
 }
 
@@ -1602,10 +1605,12 @@ class Val extends Definition {
         Gamma[this.name] = sigma;
         Rho[this.name] = value.exp;
         let name = value.val;
-        if (this.name != "it" && value.exp instanceof Lambda) {
+        if (value.exp instanceof Lambda) {
             name = this.name;
         }
-        return new DefEvalBundle(name, sigma);
+        let result = new DefEvalBundle(name, sigma);
+        result.expValue = value.val;
+        return result;
     }
 }
 
@@ -1618,20 +1623,6 @@ class ValRec extends Definition {
         }
     }
 
-    /**
-     * 
-     *
-        let val alpha    = freshtyvar ()
-            val Gamma'   = bindtyscheme (x, FORALL ([],
-                                            alpha), Gamma)
-            val (tau, c) = typeof (e, Gamma')
-            val theta    = solve (c /\ alpha ~ tau)
-            val sigma    = generalize (tysubst theta alpha,
-                                    freetyvarsGamma Gamma)
-        in  (bindtyscheme (x, sigma, Gamma),
-                                    typeSchemeString sigma)
-        end
-     */
     eval(Gamma, Rho) {
         // evaluation
         let lambda = this.exp.eval({});
@@ -1650,8 +1641,39 @@ class ValRec extends Definition {
         Gamma[this.name] = sigma;
         return new DefEvalBundle(this.name, sigma);
     }
+
+    /**
+     * Returns the conclusion in the operational semantics of the given definition
+     * as a string
+     * @param {TypeBundle}
+     * @returns {String}
+     */
+    conclusion(typebundle) {
+        let string = typebundle.constraint.toString() + ", " + Definition.GammaChar + " " + Definition.Turnstile;
+        string += "<" + this.abstractSyntax() 
+
+    }
+
+    abstractSyntax() {
+        return "VAL-REC(" + this.name + ", " + this.exp.abstractSyntax() + ")";
+    }
+
 }
- 
+
+// function main() {
+//     // page 404 : nml expressions
+//     const input = document.getElementById("code");
+//     const interpretButton = document.getElementById("interpret")
+//     const output = document.getElementById("output");
+//     var parser = new Parser();
+//     interpretButton.addEventListener("click", () => {
+//         let value = parser.interpret(input.value).toString();
+//         output.innerText = value;
+//     });
+// }
+
+// main();
+
 module.exports = {Constraint : Constraint, And : And, Equal : Equal, Type : Type, Tycon : Tycon, Trivial : Trivial,
                   Parser: Parser, Forall : Forall, Conapp : Conapp, Tyvar : Tyvar, Substitution : Substitution,
                   Environments : Environments};
