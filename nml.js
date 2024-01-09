@@ -839,59 +839,43 @@ class Environments {
         let compareTau = new Funty([new Tyvar("a"), new Tyvar("a")], Tycon.boolty);
         let binaryParams = ["fst", "snd"];
         Environments.makeFunction("+", binaryParams, arithTau, 
-                    rho => {
-                        let result = new Num(rho["fst"].value + rho["snd"].value);
-                        return new ExpEvalBundle(result.value, result);
-                    },
-                    gamma => new TypeBundle(Tycon.intty, new Trivial()));
+                    rho => new Num(rho["fst"].value + rho["snd"].value))
+                    ,
+                    gamma => new TypeBundle(Tycon.intty, new Trivial());
         Environments.makeFunction("-", binaryParams, arithTau,
-                    rho => {
-                        let result = new Num(rho["fst"].value - rho["snd"].value);
-                        return new ExpEvalBundle(result.value, result);
-                    },
+                    rho => new Num(rho["fst"].value - rho["snd"].value)
+                    ,
                     gamma => new TypeBundle(Tycon.intty, new Trivial()));
         Environments.makeFunction("/", binaryParams, arithTau,
-                    rho => {
-                        let result = new Num(rho["fst"].value / rho["snd"].value);
-                        return new ExpEvalBundle(result.value, result);
-                    },
+                    rho => new Num(rho["fst"].value / rho["snd"].value)
+                    ,
                     gamma => new TypeBundle(Tycon.intty, new Trivial()));
         Environments.makeFunction("*", binaryParams, arithTau,
-                    rho => {
-                        let result = new Num(rho["fst"].value * rho["snd"].value);
-                        return new ExpEvalBundle(result.value, result);
-                    },
+                    rho => new Num(rho["fst"].value * rho["snd"].value)
+                    ,
                     gamma => new TypeBundle(Tycon.intty, new Trivial()));
         Environments.makeFunction("=", binaryParams, compareTau,
-                    rho => {
-                        let result = new Bool(rho["fst"].equal(rho["snd"]))
-                        return new ExpEvalBundle(result.value, result);
-                    },
+                    rho => new Bool(rho["fst"].equal(rho["snd"]))
+                    ,
                     gamma => new TypeBundle(Tycon.boolty, new Trivial()));
         Environments.makeFunction("mod", binaryParams, arithTau,
-                    rho => {
-                        let result = new Num(rho["fst"].value % rho["snd"].value)
-                        return new ExpEvalBundle(result.value, result);
-                    },
+                    rho => new Num(rho["fst"].value % rho["snd"].value)
+                    ,
                     gamma => new TypeBundle(Tycon.intty, new Trivial()));
         Environments.makeFunction(">", binaryParams, new Funty([Tycon.intty, Tycon.intty], Tycon.boolty),
-                    rho => {
-                        let result = new Bool(rho["fst"].value > rho["snd"].value)
-                        return new ExpEvalBundle(result.value, result);
-                    },
+                    rho => new Bool(rho["fst"].value > rho["snd"].value)
+                    ,
                     gamma => new TypeBundle(Tycon.boolty, new Trivial()));
         Environments.makeFunction("<", binaryParams, new Funty([Tycon.intty, Tycon.intty], Tycon.boolty),
-                    rho => {
-                        let result = new Bool(rho["fst"].value < rho["snd"].value)
-                        return new ExpEvalBundle(result.value, result);
-                    },
+                    rho => new Bool(rho["fst"].value < rho["snd"].value)
+                    ,
                     gamma => new TypeBundle(Tycon.boolty, new Trivial()));
         Environments.makeFunction("car", ["list"], new Funty([Type.listtype(new Tyvar("a"))], new Tyvar("a")),
                     rho => {
                         if (rho["list"] instanceof Nil) {
                             throw new Error("Runtime error: car applied to empty list.");
                         }
-                        return new ExpEvalBundle(rho["list"].val1.value, rho["list"].val1);
+                        return rho["list"].val1;
                     },
                     gamma => new TypeBundle(gamma["list"].tau.val1.type, new Trivial()))
         Environments.makeFunction("cdr", ["list"], new Funty([Type.listtype(new Tyvar("a"))], Type.listtype(new Tyvar("a"))),
@@ -899,50 +883,35 @@ class Environments {
                         if (rho["list"] instanceof Nil) {
                             throw new Error("Runtime error: cdr applied to empty list.");
                         }
-                        return new ExpEvalBundle(rho["list"].val2.value, rho["list"].val2);
+                        return rho["list"].val2;
                     },
                     gamma => new TypeBundle(gamma["list"].tau, new Trivial()))
         Environments.makeFunction("cons", ["item", "list"], new Funty([new Tyvar("a"), Type.listtype(new Tyvar("a"))], Type.listtype(new Tyvar("a"))),
-                    rho => {
-                        let newList = new List(rho["item"], rho["list"]);
-                        return new ExpEvalBundle(newList.value, newList);
-                    },
+                    rho => new List(rho["item"], rho["list"])
+                    ,
                     gamma => new TypeBundle(Type.listtype(gamma["item"].tau), new Equal(Type.listtype(gamma["item"].tau), gamma["list"].tau)))
         Environments.makeFunction("or", binaryParams, new Funty([Tycon.boolty, Tycon.boolty], Tycon.boolty), 
-                    rho => {
-                        let result = new Bool(rho["fst"].boolean || rho["snd"].boolean);
-                        return new ExpEvalBundle(result.value, result);
-                    },
+                    rho => new Bool(rho["fst"].boolean || rho["snd"].boolean)
+                    ,
                     gamma => new TypeBundle(Type.boolty, new Trivial()));
         Environments.makeFunction("and", binaryParams, new Funty([Tycon.boolty, Tycon.boolty], Tycon.boolty),
-                    rho => {
-                        let result = new Bool(rho["fst"].boolean && rho["snd"].boolean);
-                        return new ExpEvalBundle(result.value, result);
-                    },
+                    rho => new Bool(rho["fst"].boolean && rho["snd"].boolean)
+                    ,
                     gamma => new TypeBundle(Type.boolty, new Trivial()));
         Environments.makeFunction("pair", binaryParams, new Funty([new Tyvar("a"), new Tyvar("b")], Type.pairtype(new Tyvar("a"), new Tyvar("b"))), 
-                    rho => {
-                        let pair = new Pair(rho["fst"], rho["snd"]);
-                        return new ExpEvalBundle(pair.value, pair);
-                    },
+                    rho => new Pair(rho["fst"], rho["snd"])
+                    ,
                     gamma => new TypeBundle(Type.pairtype(gamma["fst"].tau, gamma["snd"].tau), new Trivial()))
         Environments.makeFunction("fst", ["pair"], new Funty([Tycon.pairtype(new Tyvar("a"), new Tyvar("b"))], new Tyvar("a")), 
-                    rho => {
-                        let fst = rho["pair"].val1;
-                        return new ExpEvalBundle(fst.value, fst);
-                    },
+                    rho => rho["pair"].val1
+                    ,
                     gamma => new TypeBundle(gamma["pair"].tau.types[0], new Trivial()));
         Environments.makeFunction("snd", ["pair"], new Funty([Tycon.pairtype(new Tyvar("a"), new Tyvar("b"))], new Tyvar("b")), 
-                    rho => {
-                        let snd = rho["pair"].val2;
-                        return new ExpEvalBundle(snd.value, snd);
-                    },
+                    rho => rho["pair"].val2,
                     gamma => new TypeBundle(gamma["pair"].tau.types[1], new Trivial()));
         Environments.makeFunction("not", ["bool"], new Funty([Tycon.boolty], Tycon.boolty), 
-                    rho => {
-                        let result = new Bool(!rho["bool"].boolean);
-                        return new ExpEvalBundle(result.value, result);
-                    },
+                    rho => new Bool(!rho["bool"].boolean)
+                    ,
                     gamma => new TypeBundle(Type.boolty, new Trivial()));
     }
 
@@ -1013,7 +982,7 @@ class Expression {
     /**
      * Evaluates the expression
      * @param {Map<String, Expression>} Rho : Mapping of names to values
-     * @returns {ExpEvalBundle}
+     * @returns {Expression} : Can either return  a lambda or a literal
      */
     eval(Rho) {}
 
@@ -1033,6 +1002,7 @@ class Expression {
     abstractSyntax() {}
 }
 
+
 class TypeBundle {
 
     /**
@@ -1045,17 +1015,6 @@ class TypeBundle {
     }
 }
 
-class ExpEvalBundle {
-
-    /**
-     * @param {Object} val
-     * @param {Expression} exp : Can either be a literal or lambda
-     */
-    constructor(val,  exp) {
-        this.val = val;
-        this.exp = exp;
-    }
-}
 
 class Apply extends Expression {
     exp; // function var or lambda
@@ -1072,18 +1031,18 @@ class Apply extends Expression {
 
     eval(Rho) {
         let lambdaBundle = this.exp.eval(Rho); 
-        if (!lambdaBundle.exp instanceof Lambda) {
+        if (!lambdaBundle instanceof Lambda) {
             throw new Error("Cannot apply a non-function value.");
         }
-        let extendedClosure = Environments.copy(lambdaBundle.exp.closure);
-        let paramNames = lambdaBundle.exp.params;
+        let extendedClosure = Environments.copy(lambdaBundle.closure);
+        let paramNames = lambdaBundle.params;
         if (this.args.length != paramNames.length) {
             throw new Error("Mistmatch amount of arguments and parameters");
         }
         for (let i in this.args) {
-            extendedClosure[paramNames[i]] = this.args[i].eval(Rho).exp
+            extendedClosure[paramNames[i]] = this.args[i].eval(Rho)
         }
-        let result = lambdaBundle.exp.body.eval(extendedClosure);
+        let result = lambdaBundle.body.eval(extendedClosure);
         return result;
     }
 
@@ -1118,7 +1077,7 @@ class Literal extends Expression {
     }
     // inherited methods for all subclasses
     eval(Rho) {
-        return new ExpEvalBundle(this.value, this);
+        return this;
     }
 
     typeCheck(Gamma) {
@@ -1190,10 +1149,6 @@ class Nil extends Literal {
 
 /** FOR LISTS */
 class List extends Literal {
-
-    eval(Rho) {
-        return new ExpEvalBundle(this.value, this);
-    }
 
     typeCheck(Gamma) {
         let fst = this.val1.typeCheck(Gamma);
@@ -1268,11 +1223,11 @@ class If extends Expression {
     }
 
     /**
-     * @returns {ExpEvalBundle}
+     * @returns {Value}
      */
     eval(Rho) {
         let condition = this.condition.eval(Rho);
-        let result = condition.val == "#t" ? this.trueCase.eval(Rho) : this.falseCase.eval(Rho);
+        let result = condition.boolean ? this.trueCase.eval(Rho) : this.falseCase.eval(Rho);
         return result;
     }
 
@@ -1300,8 +1255,7 @@ class Var extends Expression {
         if (Rho[this.name] == null) {
             throw new Error(this.name + " is not in Rho.");
         }
-        let value = Rho[this.name];
-        return new ExpEvalBundle(value.value, value);
+        return Rho[this.name];
     }
 
     typeCheck(Gamma) {
@@ -1329,8 +1283,7 @@ class Begin extends Expression {
     }
 
     eval(Rho) {
-        let unit = new Unit();
-        let lastResult = new ExpEvalBundle(unit.value, unit);
+        let lastResult = new Unit();
         for (let e of this.es) {
             lastResult = e.eval(Rho);
         }
@@ -1354,8 +1307,8 @@ class Lambda extends Expression {
 
     params;
     body;
-    value;
     closure;
+    value;
     /**
      * @param {Array<String>} params 
      * @param {Expression} exp 
@@ -1364,13 +1317,13 @@ class Lambda extends Expression {
         super();
         this.params = params;
         this.body = exp;
-        this.value = "<function>";
         this.closure = {};
+        this.value = "<function>"
     }
 
     eval(Rho) {
         this.closure = Environments.copy(Rho);
-        return new ExpEvalBundle(this.value, this);
+        return this;
     }
 
     typeCheck(Gamma) {
@@ -1408,7 +1361,7 @@ class Let extends Expression {
     eval(Rho) {
         let newRho = Environments.copy(Rho);
         for (let entry of this.bindings) {
-            newRho[entry[0]] = entry[1].eval(Rho).exp;
+            newRho[entry[0]] = entry[1].eval(Rho);
         }
         return this.exp.eval(newRho);
     }
@@ -1469,7 +1422,7 @@ class Letrec extends Let {
         }
         let newRho = Environments.copy(Rho);
         for (let entry of this.bindings) {
-            newRho[entry[0]] = entry[1].eval({}).exp;
+            newRho[entry[0]] = entry[1].eval({});
         }
         for (let entry of this.bindings) {
             newRho[entry[0]].closure = newRho;
@@ -1508,7 +1461,7 @@ class LetStar extends Let {
     eval(Rho) {
         let newRho = Environments.copy(Rho);
         for (let entry of this.bindings) {
-            newRho[entry[0]] = entry[1].eval(newRho).exp;
+            newRho[entry[0]] = entry[1].eval(newRho);
         }
         return this.exp.eval(newRho);
     }
@@ -1603,13 +1556,13 @@ class Val extends Definition {
         let newTau = type.tau.tysubst(theta);
         let sigma = newTau.generalize(Environments.freetyvars(Gamma));
         Gamma[this.name] = sigma;
-        Rho[this.name] = value.exp;
-        let name = value.val;
-        if (value.exp instanceof Lambda) {
+        Rho[this.name] = value;
+        let name = value.value;
+        if (value instanceof Lambda) {
             name = this.name;
         }
         let result = new DefEvalBundle(name, sigma);
-        result.expValue = value.val;
+        result.expValue = value.value;
         return result;
     }
 }
@@ -1626,8 +1579,8 @@ class ValRec extends Definition {
     eval(Gamma, Rho) {
         // evaluation
         let lambda = this.exp.eval({});
-        Rho[this.name] = lambda.exp;
-        lambda.exp.closure = Environments.copy(Rho);
+        Rho[this.name] = lambda;
+        lambda.closure = Environments.copy(Rho);
         
         //type inference
         let alpha = new Tyvar();
