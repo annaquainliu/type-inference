@@ -1020,8 +1020,14 @@ class Expression {
         throw new Error("Compared expressions for equality.");
     }
 
+    /**
+     * @returns {String}
+     */
     conclusion() {}
 
+    /**
+     * @returns {String}
+     */
     abstractSyntax() {}
 }
 
@@ -1465,6 +1471,17 @@ class Let extends Expression {
         let tauBundle = this.exp.typeCheck(extendedGamma);
         return new TypeBundle(tauBundle.tau, new And(tauBundle.constraint, cPrime));
     }
+
+
+    abstractSyntax(name) {
+        let syntax = name + "(<";
+        for (let binding of this.bindings) {
+            syntax += binding[0] + ", " + binding[1].abstractSyntax() + ", ";
+        }
+        syntax = syntax.substring(0, syntax.length - 2);
+        syntax += ">, " + this.exp.abstractSyntax() + ")";
+        return syntax;
+    }
 }
 
 class Letrec extends Let {
@@ -1535,7 +1552,13 @@ class LetStar extends Let {
         return newLet.typeCheck(Gamma);
     }
 
-    
+    getSteps() {
+
+    }
+
+    conclusion() {
+
+    }
 }
 
 // abstract class
