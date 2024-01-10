@@ -828,10 +828,24 @@ class Environments {
 
     static Gamma = {};
     static Rho = {};
+    static gammaMapping = "";
 
     static reset() {
         Environments.Gamma = {};
         Environments.Rho = {};
+    }
+
+    /**
+     * 
+     * @param {String} name 
+     * @param {Type} type 
+     * @param {String} state
+     */
+    static mapInGamma(name, type, state) {
+        if (state != undefined) {
+            Environments.gammaMapping = state;
+        }       
+        Environments.gammaMapping += "{" + name + "→" + type.typeString + "}";
     }
 
     static initEnvs() {
@@ -977,6 +991,8 @@ class Environments {
 // Expression Interface
 class Expression {
 
+    initialGammaState = "";
+
     constructor() {}
 
     /**
@@ -987,17 +1003,24 @@ class Expression {
     eval(Rho) {}
 
     /**
+     * @returns {Array<String>}
+     */
+    getSteps() {}
+
+    /**
      * Only type checks the expression, without evaluation
      * @param {Map<String, Type>} Gamma 
      * @returns {TypeBundle} 
      */
-    typeCheck(Gamma) {}
+    typeCheck(Gamma) {
+        this.initialGammaState = Environments.gammaMapping;
+    }
 
     equal(snd) {
         throw new Error("Compared expressions for equality.");
     }
 
-    conclusion(typebundle) {}
+    conclusion() {}
 
     abstractSyntax() {}
 }
@@ -1047,6 +1070,7 @@ class Apply extends Expression {
     }
 
     typeCheck(Gamma) {
+        super.typeCheck(Gamma);
         let funtyAndC = this.exp.typeCheck(Gamma);
         let taus = [];
         let constraints = [funtyAndC.constraint];
@@ -1060,6 +1084,10 @@ class Apply extends Expression {
         constraints.push(new Equal(funtyAndC.tau, funty));
         let bigC = Constraint.conjoin(constraints);
         return new TypeBundle(tyvar, bigC);
+    }
+
+    getSteps() {
+
     }
 }
 
@@ -1080,7 +1108,22 @@ class Literal extends Expression {
         return this;
     }
 
+    getSteps() {
+        return [this.conclusion()];
+    }
+
+    abstractSyntax() {
+        return "Literal(" + this.value + ")";
+    }
+
+    conclusion() {
+        let gamma = Definition.GammaChar + this.initialGammaState;
+        return this.constraint.toString() + ", " + gamma + " " + Definition.Turnstile + " " 
+                + this.abstractSyntax() + " : " + this.type.typeString;
+    }
+
     typeCheck(Gamma) {
+        super.typeCheck(Gamma);
         return new TypeBundle(this.type, this.constraint);
     }
 
@@ -1151,6 +1194,7 @@ class Nil extends Literal {
 class List extends Literal {
 
     typeCheck(Gamma) {
+        super.typeCheck(Gamma);
         let fst = this.val1.typeCheck(Gamma);
         let snd = this.val2.typeCheck(Gamma);
         let bigConstraint = new And(new And(fst.constraint, snd.constraint), new Equal(Type.listtype(fst.tau), snd.tau))
@@ -1193,6 +1237,7 @@ class Pair extends Literal {
     }
 
     typeCheck(Gamma) {
+        super.typeCheck(Gamma);
         let tau1 = this.val1.typeCheck(Gamma);
         let tau2 = this.val2.typeCheck(Gamma);
         return new TypeBundle(Tycon.pairtype(tau1.tau, tau2.tau), new And(tau1.constraint, tau2.constraint));
@@ -1223,7 +1268,7 @@ class If extends Expression {
     }
 
     /**
-     * @returns {Value}
+     * @returns {Expression}
      */
     eval(Rho) {
         let condition = this.condition.eval(Rho);
@@ -1232,6 +1277,7 @@ class If extends Expression {
     }
 
     typeCheck(Gamma) {
+        super.typeCheck(Gamma);
         let results = [this.condition.typeCheck(Gamma), 
                         this.trueCase.typeCheck(Gamma), 
                         this.falseCase.typeCheck(Gamma)];
@@ -1241,6 +1287,10 @@ class If extends Expression {
         }
         let bigC = Constraint.conjoin(cs);
         return new TypeBundle(results[1].tau, bigC);
+    }
+
+    getSteps(initialGammaState, Gamma) {
+
     }
 }
 
@@ -1259,6 +1309,7 @@ class Var extends Expression {
     }
 
     typeCheck(Gamma) {
+        super.typeCheck(Gamma);
         let type_scheme = Gamma[this.name];
         let sub = {};
         for (let tyvar of type_scheme.tyvars) {
@@ -1291,6 +1342,7 @@ class Begin extends Expression {
     }
 
     typeCheck(Gamma) {
+        super.typeCheck(Gamma);
         let lastTau = Tycon.unitty;
         let constraints = [];
         for (let e of this.es) {
@@ -1327,11 +1379,13 @@ class Lambda extends Expression {
     }
 
     typeCheck(Gamma) {
+        super.typeCheck(Gamma);
         let newGamma = Environments.copy(Gamma);
         let tyvars = []
         for (let param of this.params) {
             let tyvar = new Tyvar();
             newGamma[param] = new Forall([], tyvar);
+            Environments.mapInGamma(param, new Forall([], tyvar));
             tyvars.push(tyvar);
         }
         let body = this.body.typeCheck(newGamma);
@@ -1367,6 +1421,7 @@ class Let extends Expression {
     }
 
     typeCheck(Gamma) {
+        super.typeCheck(Gamma);
         let types = [];
         let constraints = [];
         let names = this.bindings.map(entry => entry[0]);
@@ -1402,8 +1457,10 @@ class Let extends Expression {
             sigmas.push(sigma)
         }
         let extendedGamma = Environments.copy(Gamma);
+        Environments.gammaMapping = this.initialGammaState;
         for (let i in names) {
             extendedGamma[names[i]] = sigmas[i];
+            Environments.mapInGamma(names[i], sigmas[i]);
         }
         let tauBundle = this.exp.typeCheck(extendedGamma);
         return new TypeBundle(tauBundle.tau, new And(tauBundle.constraint, cPrime));
@@ -1431,6 +1488,7 @@ class Letrec extends Let {
     }
 
     typeCheck(Gamma) {
+        this.initialGammaState = Environments.gammaMapping;
         let tyvars = []; // distinct and fresh type variables
         let names = this.bindings.map(entry => entry[0]);
         let exps = this.bindings.map(entry => entry[1]);
@@ -1439,6 +1497,7 @@ class Letrec extends Let {
             let tyvar = new Tyvar();
             tyvars.push(tyvar);
             gammaPrime[name] = new Forall([], tyvar);
+            Environments.mapInGamma(name,  new Forall([], tyvar));
         }
         let taus = [];
         let constraints = [];
@@ -1467,6 +1526,7 @@ class LetStar extends Let {
     }
 
     typeCheck(Gamma) {
+        this.initialGammaState = Environments.gammaMapping;
         if (this.bindings.length == 0) {
             return this.exp.typeCheck(Gamma);
         }
@@ -1474,12 +1534,15 @@ class LetStar extends Let {
                               "exp" : new LetStar({"bindings" : this.bindings.slice(1), "exp" : this.exp})});
         return newLet.typeCheck(Gamma);
     }
+
+    
 }
 
 // abstract class
 class Definition {
     exp;
     name;
+    initialGammaState = "";
 
     static GammaChar = "Γ";
     static Turnstile = "⊢";
@@ -1498,11 +1561,24 @@ class Definition {
     eval(Gamma, Rho) {}
 
     /**
+     * @returns {Array<String>}
+     */
+    getSteps() {
+        this.initialGammaState = Environments.gammaMapping;
+        let bundle = this.eval(Environments.Gamma, Environments.Rho);
+        Environments.mapInGamma(this.name, bundle.tau, this.initialGammaState);
+        let steps = this.exp.getSteps();
+        let allSteps = steps.concat(this.conclusion());
+        return allSteps;
+    }
+
+    /**
      * Returns the conclusion in the operational semantics of the given definition
-     * @param {TypeBundle}
      * @returns {String}
      */
-    conclusion(typebundle) {}
+    conclusion() {
+        return "<" + this.abstractSyntax() + ", " + Definition.GammaChar + "> → " + Definition.GammaChar + Environments.gammaMapping; 
+    }
 
     /**
      * Returns the string of the abstract syntax of the definition
@@ -1536,6 +1612,10 @@ class Exp extends Definition {
         result.value = result.expValue;
         return result;
     }
+
+    abstractSyntax() {
+        return "Exp(" + this.name + ", " + this.exp.abstractSyntax() + ")";
+    }
 }
 
 // function types
@@ -1543,7 +1623,11 @@ class Define extends Definition {
 
     eval(Gamma, Rho) {
         return new ValRec(this.name, this.exp).eval(Gamma, Rho);
-    }   
+    }
+
+    abstractSyntax() {
+        return "Define(" + this.name + ", " + this.exp.abstractSyntax() + ")";
+    }
 }
 
 // val
@@ -1564,6 +1648,10 @@ class Val extends Definition {
         let result = new DefEvalBundle(name, sigma);
         result.expValue = value.value;
         return result;
+    }
+
+    abstractSyntax() {
+        return "Val(" + this.name + ", " + this.exp.abstractSyntax() + ")";
     }
 }
 
@@ -1595,20 +1683,8 @@ class ValRec extends Definition {
         return new DefEvalBundle(this.name, sigma);
     }
 
-    /**
-     * Returns the conclusion in the operational semantics of the given definition
-     * as a string
-     * @param {TypeBundle}
-     * @returns {String}
-     */
-    conclusion(typebundle) {
-        let string = typebundle.constraint.toString() + ", " + Definition.GammaChar + " " + Definition.Turnstile;
-        string += "<" + this.abstractSyntax() 
-
-    }
-
     abstractSyntax() {
-        return "VAL-REC(" + this.name + ", " + this.exp.abstractSyntax() + ")";
+        return "Val-rec(" + this.name + ", " + this.exp.abstractSyntax() + ")";
     }
 
 }
