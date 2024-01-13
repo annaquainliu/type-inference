@@ -1474,7 +1474,7 @@ class Lambda extends Expression {
 
     abstractSyntax() {
         let syntax = "Lambda(<";
-        for (let param of params) {
+        for (let param of this.params) {
             syntax += param + ", ";
         }
         syntax = syntax.substring(0, syntax.length - 2);
@@ -1732,22 +1732,53 @@ class DefEvalBundle {
 
 class Exp extends Definition {
 
+    constructor(name, exp) {
+        super(name, exp);
+        this.valExp = new Val("it", this.exp);
+    }
+
     eval(Gamma, Rho) {
-        let result = new Val("it", this.exp).eval(Gamma, Rho);
+        super.eval();
+        let result = this.valExp.eval(Gamma, Rho);
         result.value = result.expValue;
+        this.finalGammaState = Environments.gammaMapping;
         return result;
     }
 
+    getSteps() {
+        let bundle = this.eval(Environments.Gamma, Environments.Rho);
+        let steps = this.exp.getSteps();
+        steps = steps.concat(this.valExp.conclusion());
+        steps.push(this.conclusion());
+        return {"steps" : steps, "result" : bundle};
+    }
+
     abstractSyntax() {
-        return "Exp(" + this.name + ", " + this.exp.abstractSyntax() + ")";
+        return "Exp(" + this.exp.abstractSyntax() + ")";
     }
 }
 
 // function types
 class Define extends Definition {
 
+    constructor(name, exp) {
+        super(name, exp);
+        this.valrec = new ValRec(this.name, this.exp);
+    }
+
     eval(Gamma, Rho) {
-        return new ValRec(this.name, this.exp).eval(Gamma, Rho);
+        super.eval();
+        let bundle = this.valrec.eval(Gamma, Rho);
+        this.finalGammaState = Environments.gammaMapping;
+        return bundle;
+    }
+
+    getSteps() {
+        let bundle = this.eval(Environments.Gamma, Environments.Rho);
+        let steps = this.exp.getSteps();
+        steps = steps.concat(this.valrec.conclusion());
+        steps.push(this.conclusion());
+        return {"steps" : steps, "result" : bundle};
     }
 
     abstractSyntax() {
