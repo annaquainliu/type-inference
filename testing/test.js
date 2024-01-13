@@ -147,4 +147,5 @@ let p = new Parser();
 // p.getSteps("3");
 // p.getSteps("#t");
 // p.getSteps("(val x 3)")
-p.getSteps("(define hello (sad) sad)")
+// p.getSteps("(define hello (sad) sad)")
+p.getSteps("(val-rec hello (poo) 34)");

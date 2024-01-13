@@ -492,6 +492,16 @@ class Type {
         return new Forall(diff, this);
     }
 
+    alphabetasize() {
+        let freetyvars = this.freetyvars();
+        let sub = {};
+        for (let i = 0; i < freetyvars.length; i++) {
+            let alpha = new Tyvar("'" + String.fromCharCode(i + 97));
+            sub[freetyvars[i].typeString] = alpha;
+            freetyvars[i] = alpha;
+        }
+        return this.tysubst(new Substitution(sub));
+    }
 
 }
 
@@ -798,7 +808,6 @@ class Forall extends Type {
             freetyvars[i] = alpha;
         }
         this.tau = this.tysubst(new Substitution(sub));
-
         return this;
     }
 
@@ -1034,9 +1043,11 @@ class Expression {
      * @returns {String}
      */
     conclusion() {
+        // console.log(this.result.tau);
+        // console.log(this.result.tau.alphabetasize());
         return this.result.constraint.toString() + ", " + Definition.GammaChar 
             + this.initialGammaState + " " + Definition.Turnstile + " " 
-            + this.abstractSyntax() + " : " + this.result.tau.typeString;
+            + this.abstractSyntax() + " : " + this.result.tau.alphabetasize().typeString;
     }
 
     /**
@@ -1797,7 +1808,7 @@ class Val extends Definition {
         let newTau = type.tau.tysubst(theta);
         let sigma = newTau.generalize(Environments.freetyvars(Gamma));
         Gamma[this.name] = sigma;
-        Environments.mapInGamma(this.name, sigma, this.initialGammaState);
+        Environments.mapInGamma(this.name, sigma.alphabetasize(), this.initialGammaState);
         Rho[this.name] = value;
         let name = value.value;
         if (value instanceof Lambda) {
@@ -1840,7 +1851,7 @@ class ValRec extends Definition {
         let subbedTau = alpha.tysubst(theta);
         let sigma = subbedTau.generalize(Environments.freetyvars(Gamma));
         Gamma[this.name] = sigma;
-        Environments.mapInGamma(this.name, sigma, this.initialGammaState);
+        Environments.mapInGamma(this.name, sigma.alphabetasize(), this.initialGammaState);
         this.finalGammaState = Environments.gammaMapping;
         return new DefEvalBundle(this.name, sigma);;
     }
