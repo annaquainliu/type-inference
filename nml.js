@@ -800,7 +800,7 @@ class Forall extends Type {
     }
 
     alphabetasize() {
-        let freetyvars = this.tyvars;
+        let freetyvars = this.tyvars.length == 0 ? this.freetyvars() : this.tyvars;
         let sub = {};
         for (let i = 0; i < freetyvars.length; i++) {
             let alpha = new Tyvar("'" + String.fromCharCode(i + 97));
@@ -862,7 +862,7 @@ class Environments {
         if (state != undefined) {
             Environments.gammaMapping = state;
         }       
-        Environments.gammaMapping += "{" + name + "→" + type.typeString + "}";
+        Environments.gammaMapping += "{ " + name + " → " + type.typeString + " }";
     }
 
     static initEnvs() {
@@ -1043,11 +1043,9 @@ class Expression {
      * @returns {String}
      */
     conclusion() {
-        // console.log(this.result.tau);
-        // console.log(this.result.tau.alphabetasize());
         return this.result.constraint.toString() + ", " + Definition.GammaChar 
             + this.initialGammaState + " " + Definition.Turnstile + " " 
-            + this.abstractSyntax() + " : " + this.result.tau.alphabetasize().typeString;
+            + this.abstractSyntax() + " : " + this.result.tau.typeString;
     }
 
     /**
@@ -1123,7 +1121,8 @@ class Apply extends Expression {
         for (let arg of this.args) {
             steps = steps.concat(arg.getSteps());
         }
-        steps = steps.concat(exp.getSteps());
+        steps = steps.concat(this.exp.getSteps());
+        steps.push(this.conclusion());
         return steps;
     }
 
@@ -1165,8 +1164,8 @@ class Literal extends Expression {
 
     conclusion() {
         let gamma = Definition.GammaChar + this.initialGammaState;
-        return this.constraint.toString() + ", " + gamma + " " + Definition.Turnstile + " " 
-                + this.abstractSyntax() + " : " + this.type.typeString;
+        return this.result.constraint.toString() + ", " + gamma + " " + Definition.Turnstile + " " 
+                + this.abstractSyntax() + " : " + this.result.tau.typeString;
     }
 
     typeCheck(Gamma) {
@@ -1341,7 +1340,7 @@ class If extends Expression {
     }
 
     getSteps() {
-        let steps = condition.getSteps().concat(trueCase.getSteps()).concat(this.falseCase.getSteps());
+        let steps = this.condition.getSteps().concat(this.trueCase.getSteps()).concat(this.falseCase.getSteps());
         steps.push(this.conclusion());
         return steps;
     }
@@ -1436,7 +1435,10 @@ class Begin extends Expression {
         for (let e of this.es) {
             syntax += e.abstractSyntax() + ", ";
         }
-        syntax = syntax.substring(0, syntax.length - 2) + ")";
+        if (this.es.length > 0) {
+            syntax = syntax.substring(0, syntax.length - 2)
+        }
+        syntax += ")";
         return syntax;
     }
 }
@@ -1808,7 +1810,7 @@ class Val extends Definition {
         let newTau = type.tau.tysubst(theta);
         let sigma = newTau.generalize(Environments.freetyvars(Gamma));
         Gamma[this.name] = sigma;
-        Environments.mapInGamma(this.name, sigma.alphabetasize(), this.initialGammaState);
+        Environments.mapInGamma(this.name, sigma, this.initialGammaState);
         Rho[this.name] = value;
         let name = value.value;
         if (value instanceof Lambda) {
@@ -1851,7 +1853,7 @@ class ValRec extends Definition {
         let subbedTau = alpha.tysubst(theta);
         let sigma = subbedTau.generalize(Environments.freetyvars(Gamma));
         Gamma[this.name] = sigma;
-        Environments.mapInGamma(this.name, sigma.alphabetasize(), this.initialGammaState);
+        Environments.mapInGamma(this.name, sigma, this.initialGammaState);
         this.finalGammaState = Environments.gammaMapping;
         return new DefEvalBundle(this.name, sigma);;
     }

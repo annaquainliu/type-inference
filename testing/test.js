@@ -148,4 +148,14 @@ let p = new Parser();
 // p.getSteps("#t");
 // p.getSteps("(val x 3)")
 // p.getSteps("(define hello (sad) sad)")
-p.getSteps("(val-rec hello (poo) 34)");
+// p.getSteps("(val-rec hello (poo) 34)");
+// p.getSteps("'dfg");
+// p.getSteps("(lambda (x y z) y)");
+// p.getSteps("((lambda (x y z) y) 3 4 5)");
+// p.getSteps("x");
+// p.getSteps("(pair 3 #t)")
+// p.getSteps("'()")
+// p.getSteps("(if #t '() '(2 3 4))");
+// p.getSteps("(begin )");
+// p.getSteps("(begin #t 'hello 45)");
+p.getSteps("()")
