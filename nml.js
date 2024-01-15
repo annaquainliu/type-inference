@@ -548,7 +548,7 @@ class Tycon extends Type {
         if (tycon.typeString == this.typeString) {
             return Substitution.idsubst;
         }
-        throw new Error(tycon.typeString + " cannot equal " + this.typeString);
+        throw new NmlError(tycon.typeString + " cannot equal " + this.typeString);
     }
 
     /**
@@ -557,7 +557,7 @@ class Tycon extends Type {
      * @returns {Substitution}
      */
     solveConapp(conapp) {
-        throw new Error(conapp.typeString + " cannot equal " + this.typeString);
+        throw new NmlError(conapp.typeString + " cannot equal " + this.typeString);
     }
 
     /**
@@ -643,7 +643,7 @@ class Tyvar extends Type {
      */
     solveConapp(conapp) {
         if (Type.includes(conapp.freetyvars(), this)) {
-            throw new Error(this.typeString + "occurs in " + conapp.typeString);
+            throw new NmlError(this.typeString + "occurs in " + conapp.typeString);
         }
         let map = {};
         map[this.typeString] = conapp;
@@ -715,7 +715,7 @@ class Conapp extends Type {
      * @param {Tycon} tycon 
      */
     solveTycon(tycon) {
-        throw new Error(tycon.typeString + " cannot equal " + this.typeString);
+        throw new NmlError(tycon.typeString + " cannot equal " + this.typeString);
     }
 
     /**
@@ -725,7 +725,7 @@ class Conapp extends Type {
      */
     solveConapp(conapp) {
         if (conapp.types.length != this.types.length) {
-            throw new Error(this.typeString + " ~ " + conapp.typeString + " have different length types array");
+            throw new NmlError(this.typeString + " ~ " + conapp.typeString + " have different length types array");
         }
         let bigConstraint = new Equal(this.tycon, conapp.tycon);
         for (let i = 0; i < conapp.types.length; i++) {
@@ -905,7 +905,7 @@ class Environments {
         Environments.makeFunction("car", ["list"], new Funty([Type.listtype(new Tyvar("a"))], new Tyvar("a")),
                     rho => {
                         if (rho["list"] instanceof Nil) {
-                            throw new Error("Runtime error: car applied to empty list.");
+                            throw new NmlError("Runtime error: car applied to empty list.");
                         }
                         return rho["list"].val1;
                     },
@@ -913,7 +913,7 @@ class Environments {
         Environments.makeFunction("cdr", ["list"], new Funty([Type.listtype(new Tyvar("a"))], Type.listtype(new Tyvar("a"))),
                     rho => {
                         if (rho["list"] instanceof Nil) {
-                            throw new Error("Runtime error: cdr applied to empty list.");
+                            throw new NmlError("Runtime error: cdr applied to empty list.");
                         }
                         return rho["list"].val2;
                     },
@@ -1037,7 +1037,7 @@ class Expression {
     }
 
     equal(snd) {
-        throw new Error("Compared expressions for equality.");
+        throw new NmlError("Compared expressions for equality.");
     }
 
     /**
@@ -1085,12 +1085,12 @@ class Apply extends Expression {
     eval(Rho) {
         let lambdaBundle = this.exp.eval(Rho); 
         if (!lambdaBundle instanceof Lambda) {
-            throw new Error("Cannot apply a non-function value.");
+            throw new NmlError("Cannot apply a non-function value.");
         }
         let extendedClosure = Environments.copy(lambdaBundle.closure);
         let paramNames = lambdaBundle.params;
         if (this.args.length != paramNames.length) {
-            throw new Error("Mistmatch amount of arguments and parameters");
+            throw new NmlError("Mistmatch amount of arguments and parameters");
         }
         for (let i in this.args) {
             extendedClosure[paramNames[i]] = this.args[i].eval(Rho)
@@ -1357,7 +1357,7 @@ class Var extends Expression {
 
     eval(Rho) {
         if (Rho[this.name] == null) {
-            throw new Error(this.name + " is not in Rho.");
+            throw new NmlError(this.name + " is not in Rho.");
         }
         return Rho[this.name];
     }
@@ -1595,9 +1595,9 @@ class Letrec extends Let {
     eval(Rho) {
         //parsing
         let exps = this.bindings.map(entry => entry[1]);
-        for (let exp in exps) {
-            if (!exp instanceof Lambda) {
-                throw new Error("Expression bound in letrec binding is not a lambda.");
+        for (let exp of exps) {
+            if (!(exp instanceof Lambda)) {
+                throw new NmlError("Expression bound in letrec binding is not a lambda.");
             }
         }
         let newRho = Environments.copy(Rho);
@@ -1686,7 +1686,7 @@ class Definition {
      */
     constructor(name, exp) {
         if (!exp instanceof Expression) {
-            throw new Error(name + " is not assigned an expression!");
+            throw new NmlError(name + " is not assigned an expression!");
         }
         this.exp = exp;
         this.name = name;
@@ -1825,7 +1825,7 @@ class ValRec extends Definition {
     constructor(name, exp) {
         super(name, exp);
         if (!exp instanceof Lambda) {
-            throw new Error("val-rec/define not given a lambda expression!");
+            throw new NmlError("val-rec/define not given a lambda expression!");
         }
     }
 
@@ -1974,16 +1974,26 @@ function main() {
     const steps = document.getElementById("steps");
     var parser = new Parser();
     interpretButton.addEventListener("click", () => {
-        // let value = parser.interpret(input.value).toString();
-        // output.innerText = value;
-        let value = parser.getSteps(input.value);
-        output.innerText = value["result"].toString();
-        steps.replaceChildren(value["steps"].toHtml());
+        try {
+            let value = parser.getSteps(input.value);
+            output.innerText = value["result"].toString();
+            steps.replaceChildren(value["steps"].toHtml());
+        }
+        catch(e) {
+            if (e instanceof NmlError) {
+                alert(e.message);
+            }
+            else {
+                alert("Ill typed Nml code");
+            }
+        }
     });
 }
 
-// main();
+class NmlError extends Error {}
 
-module.exports = {Constraint : Constraint, And : And, Equal : Equal, Type : Type, Tycon : Tycon, Trivial : Trivial,
-                  Parser: Parser, Forall : Forall, Conapp : Conapp, Tyvar : Tyvar, Substitution : Substitution,
-                  Environments : Environments};
+main();
+
+// module.exports = {Constraint : Constraint, And : And, Equal : Equal, Type : Type, Tycon : Tycon, Trivial : Trivial,
+//                   Parser: Parser, Forall : Forall, Conapp : Conapp, Tyvar : Tyvar, Substitution : Substitution,
+//                   Environments : Environments};
