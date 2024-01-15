@@ -9,6 +9,10 @@ class Parser {
     constructor() {
         Environments.reset();
         Environments.initEnvs();
+        this.predefs();
+    }
+
+    predefs() {
         let predefs = Environments.predefs();
         for (let predef of predefs) {
             this.interpret(predef);
@@ -1972,7 +1976,13 @@ function main() {
     const interpretButton = document.getElementById("interpret")
     const output = document.getElementById("output");
     const steps = document.getElementById("steps");
+    const clearEnvs = document.getElementById("clear");
     var parser = new Parser();
+    clearEnvs.addEventListener("click", () => {
+        Environments.reset();
+        Environments.initEnvs();
+        parser.predefs();
+    });
     interpretButton.addEventListener("click", () => {
         try {
             let value = parser.getSteps(input.value);
