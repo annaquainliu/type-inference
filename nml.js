@@ -23,9 +23,7 @@ class Parser {
 
     getSteps(value) {
         let def = this.tokenInput(value);
-        let output = def.getSteps();
-        console.log(output["steps"]);
-        console.log(output["result"].toString());
+        return def.getSteps();
     }
 
     tokenInput(input) {
@@ -255,6 +253,9 @@ class Substitution {
     }
 
     toString() {
+        if (Object.keys(this.mapping).length == 0) {
+            return "()";
+        }
         let str = "(";
         let keys = Object.keys(this.mapping);
         for (let key of keys) {
@@ -1021,7 +1022,7 @@ class Expression {
     eval(Rho) {}
 
     /**
-     * @returns {Array<String>}
+     * @returns {TreeNode}
      */
     getSteps() {}
 
@@ -1043,9 +1044,9 @@ class Expression {
      * @returns {String}
      */
     conclusion() {
-        return this.result.constraint.toString() + ", " + Definition.GammaChar 
+        return Definition.GammaChar 
             + this.initialGammaState + " " + Definition.Turnstile + " " 
-            + this.abstractSyntax() + " : " + this.result.tau.typeString;
+            + this.abstractSyntax();
     }
 
     /**
@@ -1116,14 +1117,17 @@ class Apply extends Expression {
         return this.result;
     }
 
+    /**
+     * 
+     * @returns {TreeNode}
+     */
     getSteps() {
         let steps = [];
+        steps.push(this.exp.getSteps());
         for (let arg of this.args) {
-            steps = steps.concat(arg.getSteps());
+            steps.push(arg.getSteps());
         }
-        steps = steps.concat(this.exp.getSteps());
-        steps.push(this.conclusion());
-        return steps;
+        return new ExpNode(this.conclusion(), steps, this.result);
     }
 
     abstractSyntax() {
@@ -1155,17 +1159,11 @@ class Literal extends Expression {
     }
 
     getSteps() {
-        return [this.conclusion()];
+        return new ExpNode(this.conclusion(), [], this.result);
     }
 
     abstractSyntax() {
         return "Literal(" + this.value + ")";
-    }
-
-    conclusion() {
-        let gamma = Definition.GammaChar + this.initialGammaState;
-        return this.result.constraint.toString() + ", " + gamma + " " + Definition.Turnstile + " " 
-                + this.abstractSyntax() + " : " + this.result.tau.typeString;
     }
 
     typeCheck(Gamma) {
@@ -1340,9 +1338,8 @@ class If extends Expression {
     }
 
     getSteps() {
-        let steps = this.condition.getSteps().concat(this.trueCase.getSteps()).concat(this.falseCase.getSteps());
-        steps.push(this.conclusion());
-        return steps;
+        let children = [this.condition.getSteps(), this.trueCase.getSteps(), this.falseCase.getSteps()];
+        return new ExpNode(this.conclusion(), children, this.result);
     }
 
     abstractSyntax() {
@@ -1379,7 +1376,7 @@ class Var extends Expression {
     }
 
     getSteps() {
-        return [this.conclusion()];
+        return new ExpNode(this.conclusion(), [], this.result);
     }
 
     abstractSyntax() {
@@ -1424,10 +1421,9 @@ class Begin extends Expression {
     getSteps() {
         let steps = [];
         for (let e of this.es) {
-            steps = steps.concat(e.getSteps());
+            steps.push(e.getSteps());
         }
-        steps.push(this.conclusion());
-        return steps;
+        return new ExpNode(this.conclusion(), steps, this.result);
     }
 
     abstractSyntax() {
@@ -1482,7 +1478,7 @@ class Lambda extends Expression {
     }
 
     getSteps() {
-        return [this.conclusion()];
+        return new ExpNode(this.conclusion(), [], this.result);
     }
 
     abstractSyntax() {
@@ -1587,11 +1583,10 @@ class Let extends Expression {
     getSteps() {
         let steps = [];
         for (let binding of this.bindings) {
-            steps = binding[1].getSteps().concat(steps);
+            steps.push(binding[1].getSteps());
         }
-        steps = this.exp.getSteps().concat(steps);
-        steps.push(this.conclusion());
-        return steps;
+        steps.push(this.exp.getSteps());
+        return new ExpNode(this.conclusion(), steps, this.result);
     }
 }
 
@@ -1681,6 +1676,7 @@ class Definition {
     name;
     initialGammaState = "";
     finalGammaState = "";
+    sub; // Substitution
 
     static GammaChar = "Γ";
     static Turnstile = "⊢";
@@ -1702,13 +1698,12 @@ class Definition {
 
     /**
      * Returns the operational semantic steps of the definition type inference
-     * @returns {TreeNode}
+     * @returns {Map<String, Object>}
      */
     getSteps() {
         let bundle = this.eval(Environments.Gamma, Environments.Rho);
-        let steps = this.exp.getSteps();
-        steps.push(this.conclusion());
-        return {"steps" : steps, "result" : bundle};
+        let node = new DefNode(this.conclusion(), [this.exp.getSteps()], this.finalGammaState, this.sub);
+        return {"steps" : node, "result" : bundle};
     }
 
     /**
@@ -1716,7 +1711,7 @@ class Definition {
      * @returns {String}
      */
     conclusion() {
-        return "<" + this.abstractSyntax() + ", " + Definition.GammaChar + this.initialGammaState + "> → " + Definition.GammaChar + this.finalGammaState; 
+        return "<" + this.abstractSyntax() + ", " + Definition.GammaChar + this.initialGammaState + ">"; 
     }
 
     /**
@@ -1752,19 +1747,18 @@ class Exp extends Definition {
     }
 
     eval(Gamma, Rho) {
-        super.eval();
         let result = this.valExp.eval(Gamma, Rho);
         result.value = result.expValue;
-        this.finalGammaState = Environments.gammaMapping;
         return result;
     }
 
     getSteps() {
-        let bundle = this.eval(Environments.Gamma, Environments.Rho);
-        let steps = this.exp.getSteps();
-        steps = steps.concat(this.valExp.conclusion());
-        steps.push(this.conclusion());
-        return {"steps" : steps, "result" : bundle};
+        this.initialGammaState = Environments.gammaMapping;
+        let bundle = this.valExp.getSteps();
+        bundle["result"].value = bundle["result"].expValue;
+        this.finalGammaState = Environments.gammaMapping;
+        this.sub = this.valExp.sub;
+        return {"steps" : new DefNode(this.conclusion(), [bundle["steps"]], this.finalGammaState, this.sub), "result" : bundle["result"]}
     }
 
     abstractSyntax() {
@@ -1781,18 +1775,15 @@ class Define extends Definition {
     }
 
     eval(Gamma, Rho) {
-        super.eval();
-        let bundle = this.valrec.eval(Gamma, Rho);
-        this.finalGammaState = Environments.gammaMapping;
-        return bundle;
+        return this.valrec.eval(Gamma, Rho);
     }
 
     getSteps() {
-        let bundle = this.eval(Environments.Gamma, Environments.Rho);
-        let steps = this.exp.getSteps();
-        steps = steps.concat(this.valrec.conclusion());
-        steps.push(this.conclusion());
-        return {"steps" : steps, "result" : bundle};
+        this.initialGammaState = Environments.gammaMapping;
+        let bundle = this.valrec.getSteps();
+        this.finalGammaState = Environments.gammaMapping;
+        this.sub = this.valrec.sub;
+        return {"steps" : new DefNode(this.conclusion(), [bundle["steps"]], this.finalGammaState, this.sub), "result" : bundle["result"]}
     }
 
     abstractSyntax() {
@@ -1808,6 +1799,7 @@ class Val extends Definition {
         let value = this.exp.eval(Rho);
         let type = this.exp.typeCheck(Gamma);
         let theta = type.constraint.solve();
+        this.sub = theta;
         let newTau = type.tau.tysubst(theta);
         let sigma = newTau.generalize(Environments.freetyvars(Gamma));
         Gamma[this.name] = sigma;
@@ -1851,6 +1843,7 @@ class ValRec extends Definition {
         let type = this.exp.typeCheck(gammaPrime);
         let constraint = new And(type.constraint, new Equal(alpha, type.tau));
         let theta = constraint.solve();
+        this.sub = theta;
         let subbedTau = alpha.tysubst(theta);
         let sigma = subbedTau.generalize(Environments.freetyvars(Gamma));
         Gamma[this.name] = sigma;
@@ -1868,32 +1861,126 @@ class ValRec extends Definition {
 class TreeNode {
     value;
     children;
-
+    id;
+    static treeIds = 0;
     /**
      * Builds a node in the Type Inference tree
      * @param {String} value : 
-     * @param {List<Node>} children 
+     * @param {List<TreeNode>} children 
      */
     constructor(value, children) {
         this.value = value;
         this.children = children;
+        this.id = TreeNode.treeIds;
+        TreeNode.treeIds++;
     }   
+
     appendChild(child) {
         this.children.push(child);
     }
+
+    /**
+     * @returns {Node}
+     */
+    toHtml() {
+        let node = document.createElement("div");
+        let text = document.createElement("span");
+        text.innerText = this.value;
+        node.appendChild(text);
+        node.className = "treeNode";
+        let childrenDiv = document.createElement("div");
+        for (let child of this.children) {
+            childrenDiv.appendChild(child.toHtml());
+        }
+        node.appendChild(childrenDiv);
+        return node;
+    }
 }
 
-// function main() {
-//     // page 404 : nml expressions
-//     const input = document.getElementById("code");
-//     const interpretButton = document.getElementById("interpret")
-//     const output = document.getElementById("output");
-//     var parser = new Parser();
-//     interpretButton.addEventListener("click", () => {
-//         let value = parser.interpret(input.value).toString();
-//         output.innerText = value;
-//     });
-// }
+class Leaf extends TreeNode {
+    /**
+     * 
+     * @param {String} value 
+     */
+    constructor(value) {
+        super(value, []);
+    }
+
+    toHtml() {
+        let div = super.toHtml();
+        div.className = "leaf";
+        return div;
+    }
+}
+
+class StepNode extends TreeNode {
+    result; 
+    /**
+     * 
+     * @param {String} value 
+     * @param {List<TreeNode>} children 
+     * @param {String} result 
+     */
+    constructor(value, children, result) {
+        super(value, children);
+        this.result = new Leaf(result);
+    }
+
+    toHtml() {
+        let node = super.toHtml();
+        node.appendChild(this.result.toHtml());
+        return node;
+    }
+}
+
+class ExpNode extends StepNode {
+    
+    /**
+     * 
+     * @param {String} value 
+     * @param {List<TreeNode>} children 
+     * @param {TypeBundle} result 
+     */
+    constructor(value, children, result) {
+        super(value, children, result.tau.typeString + ", " + result.constraint.toString());
+    }
+
+    toHtml() {
+        let node = super.toHtml();
+        node.children[1].className = "horizontalTree";
+        return node;
+    }
+}
+
+class DefNode extends StepNode {
+
+    /**
+     * 
+     * @param {String} value : Definition conclusion
+     * @param {List<TreeNode>} children 
+     * @param {String} finalGammaState 
+     * @param {Substitution} sub 
+     */
+    constructor(value, children, finalGammaState, sub) {
+        super(value, children, Definition.GammaChar + finalGammaState + ", Substitution = " + sub.toString());
+    }
+}
+
+function main() {
+    // page 404 : nml expressions
+    const input = document.getElementById("code");
+    const interpretButton = document.getElementById("interpret")
+    const output = document.getElementById("output");
+    const steps = document.getElementById("steps");
+    var parser = new Parser();
+    interpretButton.addEventListener("click", () => {
+        // let value = parser.interpret(input.value).toString();
+        // output.innerText = value;
+        let value = parser.getSteps(input.value);
+        output.innerText = value["result"].toString();
+        steps.replaceChildren(value["steps"].toHtml());
+    });
+}
 
 // main();
 
