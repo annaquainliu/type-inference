@@ -1702,7 +1702,7 @@ class Definition {
 
     /**
      * Returns the operational semantic steps of the definition type inference
-     * @returns {Map<String, Object>}
+     * @returns {TreeNode}
      */
     getSteps() {
         let bundle = this.eval(Environments.Gamma, Environments.Rho);
@@ -1863,6 +1863,24 @@ class ValRec extends Definition {
         return "Val-rec(" + this.name + ", " + this.exp.abstractSyntax() + ")";
     }
 
+}
+
+class TreeNode {
+    value;
+    children;
+
+    /**
+     * Builds a node in the Type Inference tree
+     * @param {String} value : 
+     * @param {List<Node>} children 
+     */
+    constructor(value, children) {
+        this.value = value;
+        this.children = children;
+    }   
+    appendChild(child) {
+        this.children.push(child);
+    }
 }
 
 // function main() {
