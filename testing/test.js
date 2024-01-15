@@ -158,4 +158,6 @@ let p = new Parser();
 // p.getSteps("(if #t '() '(2 3 4))");
 // p.getSteps("(begin )");
 // p.getSteps("(begin #t 'hello 45)");
-p.getSteps("()")
+// p.getSteps("(let ([x 3][y #f]) x)")
+// p.getSteps("(letrec ([poo (lambda (asd) (if (poo #t) #t asd))]) poo)");
+// p.getSteps("(define f (a) (f a))")

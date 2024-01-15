@@ -1490,7 +1490,9 @@ class Lambda extends Expression {
         for (let param of this.params) {
             syntax += param + ", ";
         }
-        syntax = syntax.substring(0, syntax.length - 2);
+        if (this.params.length > 0) {
+            syntax = syntax.substring(0, syntax.length - 2);
+        }
         syntax += ">, ";
         syntax += this.body.abstractSyntax() + ")";
         return syntax;
@@ -1572,9 +1574,8 @@ class Let extends Expression {
         return new TypeBundle(tauBundle.tau, new And(tauBundle.constraint, cPrime));
     }
 
-
     abstractSyntax(name) {
-        let syntax = name + "(<";
+        let syntax = (name == undefined ? "Let" : name) + "(<";
         for (let binding of this.bindings) {
             syntax += binding[0] + ", " + binding[1].abstractSyntax() + ", ";
         }
@@ -1586,9 +1587,9 @@ class Let extends Expression {
     getSteps() {
         let steps = [];
         for (let binding of this.bindings) {
-            steps = steps.concat(binding[1].getSteps());
+            steps = binding[1].getSteps().concat(steps);
         }
-        steps = steps.concat(this.exp.getSteps());
+        steps = this.exp.getSteps().concat(steps);
         steps.push(this.conclusion());
         return steps;
     }
