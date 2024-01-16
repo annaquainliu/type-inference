@@ -1504,6 +1504,7 @@ class Let extends Expression {
 
     bindings;
     exp;
+    generalized;
 
     /**
      * @param {Map<String, Object>} info
@@ -1954,6 +1955,49 @@ class ExpNode extends StepNode {
         let node = super.toHtml();
         node.children[1].className = "horizontalTree";
         return node;
+    }
+}
+
+class ThetaNode extends StepNode {
+
+    /**
+     * @param {Constraint} constraint 
+     * @param {Substitution} theta 
+     */
+    constructor(constraint, theta) {
+        super("solve(" + constraint.toString() + ")", [], "ϴ = " + theta.toString());
+    }
+}
+
+class TySubstNode extends StepNode {
+
+   /**
+    * @param {Type} tau 
+    * @param {Type} result 
+    */
+    constructor(tau, result) {
+        super( "ϴ" + theta.toString() + tau.typeString, [], result.typeString);
+    }
+}
+
+class GenNode extends StepNode {
+
+    /**
+     * 
+     * @param {Type} tau 
+     * @param {List<Tyvar>} ftvs 
+     * @param {Forall} generalized 
+     */
+    constructor(tau, ftvs, generalized) {
+        let ftvSet = "{";
+        for (let ftv of ftvs) {
+            ftvSet += ftv.typeString + ", ";
+        }
+        if (ftvs.length > 0) {
+            ftvSet = ftvSet.substring(0, ftvSet.length - 2);
+        }
+        ftvSet += "}";
+        super("generalize(" + tau.typeString + ", " + ftvSet + ")", [], generalized.typeString);
     }
 }
 
