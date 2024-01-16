@@ -1875,8 +1875,6 @@ class TreeNode {
     constructor(value, children) {
         this.value = value;
         this.children = children;
-        this.id = TreeNode.treeIds;
-        TreeNode.treeIds++;
     }   
 
     appendChild(child) {
@@ -1890,6 +1888,9 @@ class TreeNode {
         let node = document.createElement("div");
         let text = document.createElement("span");
         text.innerText = this.value;
+        this.id = TreeNode.treeIds;
+        TreeNode.treeIds++;
+        text.id = "" + this.id;
         node.appendChild(text);
         node.className = "treeNode";
         let childrenDiv = document.createElement("div");
@@ -1918,7 +1919,7 @@ class Leaf extends TreeNode {
 }
 
 class StepNode extends TreeNode {
-    result; 
+    result;  
     /**
      * 
      * @param {String} value 
