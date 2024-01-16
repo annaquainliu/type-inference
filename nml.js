@@ -1482,7 +1482,7 @@ class Lambda extends Expression {
     }
 
     getSteps() {
-        return new ExpNode(this.conclusion(), [], this.result);
+        return new ExpNode(this.conclusion(), [this.body.getSteps()], this.result);
     }
 
     abstractSyntax() {
@@ -1502,10 +1502,16 @@ class Lambda extends Expression {
 
 class Let extends Expression {
 
+    // for interpreting
     bindings;
     exp;
-    generalized;
 
+    // for tree
+    constraintNode;
+    tySubstNodes;
+    generalizeNodes;
+    cPrime;
+    union;
     /**
      * @param {Map<String, Object>} info
      */
@@ -1513,6 +1519,11 @@ class Let extends Expression {
         super();
         this.bindings = info["bindings"];
         this.exp = info["exp"];
+        this.constraintNode = null;
+        this.tySubstNodes = [];
+        this.generalizeNodes = [];
+        this.cPrime = null;
+        this.union = [];
     }
     /**
      * Evaluate all expressions in the bindings
@@ -1545,6 +1556,7 @@ class Let extends Expression {
 
     solveRestWithC(c, Gamma, types, names) {
         let theta = c.solve();
+        this.constraintNode = new ThetaNode(c, theta);
         let domTheta = Object.keys(theta.mapping);
         let freetyvars = Environments.freetyvars(Gamma);
         let inter = [];
@@ -1558,12 +1570,17 @@ class Let extends Expression {
             alphaConstraints.push(new Equal(alpha, alpha.tysubst(theta)));
         }
         let cPrime = Constraint.conjoin(alphaConstraints);
+        this.cPrime = cPrime;
         let constraintfreetyvars = cPrime.freetyvars();
         let union = Tyvar.union(constraintfreetyvars, freetyvars);
+        this.union = union;
         let sigmas = [];
         for (let tau of types) {
-            let sigma = tau.tysubst(theta).generalize(union);
-            sigmas.push(sigma)
+            let tauSubst = tau.tysubst(theta);
+            let sigma = tauSubst.generalize(union);
+            sigmas.push(sigma);
+            this.tySubstNodes.push(new TySubstNode(tau, tauSubst));
+            this.generalizeNodes.push(new GenNode(tauSubst, sigma));
         }
         let extendedGamma = Environments.copy(Gamma);
         Environments.gammaMapping = this.initialGammaState;
@@ -1590,6 +1607,12 @@ class Let extends Expression {
         for (let binding of this.bindings) {
             steps.push(binding[1].getSteps());
         }
+        steps.push(this.constraintNode);
+        steps = steps.concat(this.tySubstNodes);
+        let ftvNode = new FtvarNode(this.initialGammaState, this.union);
+        ftvNode.value = "ftv(" + this.cPrime.toString() + ") ∪ " + ftvNode.value;
+        steps.push(ftvNode);
+        steps = steps.concat(this.generalizeNodes);
         steps.push(this.exp.getSteps());
         return new ExpNode(this.conclusion(), steps, this.result);
     }
@@ -1976,7 +1999,7 @@ class TySubstNode extends StepNode {
     * @param {Type} result 
     */
     constructor(tau, result) {
-        super( "ϴ" + theta.toString() + tau.typeString, [], result.typeString);
+        super( "ϴ" + tau.typeString, [], result.typeString);
     }
 }
 
@@ -1985,10 +2008,16 @@ class GenNode extends StepNode {
     /**
      * 
      * @param {Type} tau 
-     * @param {List<Tyvar>} ftvs 
      * @param {Forall} generalized 
      */
-    constructor(tau, ftvs, generalized) {
+    constructor(tau, generalized) {
+        super("generalize(" + tau.typeString + ", A)", [], generalized.typeString);
+    }
+}
+
+class FtvarNode extends StepNode {
+
+    constructor(initialGammaState, ftvs) {
         let ftvSet = "{";
         for (let ftv of ftvs) {
             ftvSet += ftv.typeString + ", ";
@@ -1997,7 +2026,7 @@ class GenNode extends StepNode {
             ftvSet = ftvSet.substring(0, ftvSet.length - 2);
         }
         ftvSet += "}";
-        super("generalize(" + tau.typeString + ", " + ftvSet + ")", [], generalized.typeString);
+        super("ftv(" + Definition.GammaChar + initialGammaState + ")", [], "A = " + ftvSet);
     }
 }
 
