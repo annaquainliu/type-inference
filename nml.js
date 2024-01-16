@@ -1673,6 +1673,10 @@ class Letrec extends Let {
 
 class LetStar extends Let {
     
+    constructor(map) {
+        super(map);
+        this.newLet = null;
+    }
     eval(Rho) {
         let newRho = Environments.copy(Rho);
         for (let entry of this.bindings) {
@@ -1684,16 +1688,25 @@ class LetStar extends Let {
     typeCheck(Gamma) {
         this.initialGammaState = Environments.gammaMapping;
         if (this.bindings.length == 0) {
-            return this.exp.typeCheck(Gamma);
+            this.result = this.exp.typeCheck(Gamma);
+            return this.result;
         }
         let newLet = new Let({"bindings" : [this.bindings[0]], 
                               "exp" : new LetStar({"bindings" : this.bindings.slice(1), "exp" : this.exp})});
         this.result = newLet.typeCheck(Gamma);
+        this.newLet = newLet;
         return this.result;
     }
 
+    getSteps() {
+        if (this.newLet == null) {
+            return new ExpNode(this.conclusion(), [], this.result);
+        }
+        return new ExpNode(this.conclusion(), [this.newLet.getSteps()], this.result);
+    }
+
     abstractSyntax() {
-        return super.abstractSyntax("Let");
+        return super.abstractSyntax("LetStar");
     }
 
 }
