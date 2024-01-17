@@ -1717,7 +1717,10 @@ class Definition {
     name;
     initialGammaState = "";
     finalGammaState = "";
-    sub; // Substitution
+    constraintNode = null;
+    tysubstNode = null;
+    genNode = null;
+    ftvNode = null;
 
     static GammaChar = "Γ";
     static Turnstile = "⊢";
@@ -1743,7 +1746,7 @@ class Definition {
      */
     getSteps() {
         let bundle = this.eval(Environments.Gamma, Environments.Rho);
-        let node = new DefNode(this.conclusion(), [this.exp.getSteps()], this.finalGammaState, this.sub);
+        let node = new DefNode(this.conclusion(), [this.exp.getSteps(), this.constraintNode, this.tysubstNode, this.ftvNode, this.genNode], this.finalGammaState);
         return {"steps" : node, "result" : bundle};
     }
 
@@ -1799,7 +1802,7 @@ class Exp extends Definition {
         bundle["result"].value = bundle["result"].expValue;
         this.finalGammaState = Environments.gammaMapping;
         this.sub = this.valExp.sub;
-        return {"steps" : new DefNode(this.conclusion(), [bundle["steps"]], this.finalGammaState, this.sub), "result" : bundle["result"]}
+        return {"steps" : new DefNode(this.conclusion(), [bundle["steps"]], this.finalGammaState), "result" : bundle["result"]}
     }
 
     abstractSyntax() {
@@ -1824,7 +1827,7 @@ class Define extends Definition {
         let bundle = this.valrec.getSteps();
         this.finalGammaState = Environments.gammaMapping;
         this.sub = this.valrec.sub;
-        return {"steps" : new DefNode(this.conclusion(), [bundle["steps"]], this.finalGammaState, this.sub), "result" : bundle["result"]}
+        return {"steps" : new DefNode(this.conclusion(), [bundle["steps"]], this.finalGammaState), "result" : bundle["result"]}
     }
 
     abstractSyntax() {
@@ -1840,9 +1843,13 @@ class Val extends Definition {
         let value = this.exp.eval(Rho);
         let type = this.exp.typeCheck(Gamma);
         let theta = type.constraint.solve();
-        this.sub = theta;
+        this.constraintNode = new ThetaNode(type.constraint, theta);
         let newTau = type.tau.tysubst(theta);
-        let sigma = newTau.generalize(Environments.freetyvars(Gamma));
+        this.tysubstNode = new TySubstNode(type.tau, newTau);
+        let ftvs = Environments.freetyvars(Gamma);
+        let sigma = newTau.generalize(ftvs);
+        this.ftvNode = new FtvarNode(this.initialGammaState, ftvs)
+        this.genNode = new GenNode(newTau, sigma);
         Gamma[this.name] = sigma;
         Environments.mapInGamma(this.name, sigma, this.initialGammaState);
         Rho[this.name] = value;
@@ -1884,9 +1891,13 @@ class ValRec extends Definition {
         let type = this.exp.typeCheck(gammaPrime);
         let constraint = new And(type.constraint, new Equal(alpha, type.tau));
         let theta = constraint.solve();
-        this.sub = theta;
+        this.constraintNode = new ThetaNode(constraint, theta);
         let subbedTau = alpha.tysubst(theta);
-        let sigma = subbedTau.generalize(Environments.freetyvars(Gamma));
+        this.tysubstNode = new TySubstNode(alpha, subbedTau);
+        let ftvs = Environments.freetyvars(Gamma);
+        let sigma = subbedTau.generalize(ftvs);
+        this.ftvNode = new FtvarNode(this.initialGammaState, ftvs)
+        this.genNode = new GenNode(subbedTau, sigma);
         Gamma[this.name] = sigma;
         Environments.mapInGamma(this.name, sigma, this.initialGammaState);
         this.finalGammaState = Environments.gammaMapping;
@@ -1931,6 +1942,7 @@ class TreeNode {
         node.appendChild(text);
         node.className = "treeNode";
         let childrenDiv = document.createElement("div");
+        childrenDiv.className = "horizontalTree"
         for (let child of this.children) {
             childrenDiv.appendChild(child.toHtml());
         }
@@ -1985,12 +1997,6 @@ class ExpNode extends StepNode {
      */
     constructor(value, children, result) {
         super(value, children, result.tau.typeString + ", " + result.constraint.toString());
-    }
-
-    toHtml() {
-        let node = super.toHtml();
-        node.children[1].className = "horizontalTree";
-        return node;
     }
 }
 
@@ -2050,10 +2056,9 @@ class DefNode extends StepNode {
      * @param {String} value : Definition conclusion
      * @param {List<TreeNode>} children 
      * @param {String} finalGammaState 
-     * @param {Substitution} sub 
      */
-    constructor(value, children, finalGammaState, sub) {
-        super(value, children, Definition.GammaChar + finalGammaState + ", Substitution = " + sub.toString());
+    constructor(value, children, finalGammaState) {
+        super(value, children, Definition.GammaChar + finalGammaState);
     }
 }
 

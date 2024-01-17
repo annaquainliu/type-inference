@@ -161,6 +161,6 @@ let p = new Parser();
 // p.getSteps("(let ([x 3][y #f]) x)")
 // p.getSteps("(letrec ([poo (lambda (asd) (if (poo #t) #t asd))]) poo)");
 // p.getSteps("(define f (a) (f a))")
-p.getSteps("(let* ([pee 3][poo pee]) poo)")
+// p.getSteps("(let* ([pee 3][poo pee]) poo)")
 // p.getSteps("3")
 // p.getSteps("(+ 3 4)")
