@@ -2069,12 +2069,44 @@ function main() {
     const output = document.getElementById("output");
     const steps = document.getElementById("steps");
     const clearEnvs = document.getElementById("clear");
+    const walkthrough = document.getElementById("walkthrough");
+    const nextStep = document.getElementById("nextStep");
+
     var parser = new Parser();
     clearEnvs.addEventListener("click", () => {
         Environments.reset();
         Environments.initEnvs();
         parser.predefs();
     });
+    
+    let currId, fstId, lastId;
+    walkthrough.addEventListener("click", () => {
+        if (nextStep.style.display == "none") {
+            nextStep.style.display = "block";
+        }
+        else if (currId != undefined && document.getElementById(currId - 1) != null) {
+            document.getElementById(currId - 1).style.color = "black";
+        }
+        fstId = parseInt(steps.children[0].children[0].id);
+        lastId = parseInt(steps.children[0].children[2].children[0].id);
+        currId = fstId;
+    });
+
+    nextStep.addEventListener("click", () => {
+        if (steps.children.length == 0) {
+            return;
+        }
+        if (document.getElementById(currId - 1) != null) {
+            document.getElementById(currId - 1).style.color = "black";
+        }
+        if (currId == lastId + 1) {
+            nextStep.style.display = "none";
+            return;
+        }
+        document.getElementById(currId).style.color = "blue";
+        currId++;
+    });
+
     interpretButton.addEventListener("click", () => {
         try {
             let value = parser.getSteps(input.value);
