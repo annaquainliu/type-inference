@@ -2082,7 +2082,7 @@ function main() {
     let currId, fstId, lastId;
     walkthrough.addEventListener("click", () => {
         if (nextStep.style.display == "none") {
-            nextStep.style.display = "block";
+            nextStep.style.display = "unset";
         }
         else if (currId != undefined && document.getElementById(currId - 1) != null) {
             document.getElementById(currId - 1).style.color = "black";
@@ -2104,6 +2104,7 @@ function main() {
             return;
         }
         document.getElementById(currId).style.color = "blue";
+        window.location.href = "#" + currId;
         currId++;
     });
 

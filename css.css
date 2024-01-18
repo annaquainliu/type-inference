@@ -10,7 +10,7 @@ h1 {
 }
 
 #input {
-    width: 40%;
+    width: 70%;
     height: 20vh;
     text-align: center;
     margin: auto;
@@ -41,7 +41,6 @@ h1 {
 
 #interpret {
     height: 35%;
-    width: 20%;
 }
 
 #output {
