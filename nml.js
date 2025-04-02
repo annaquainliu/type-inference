@@ -1942,7 +1942,7 @@ class TreeNode {
         node.appendChild(text);
         node.className = "treeNode";
         let childrenDiv = document.createElement("div");
-        childrenDiv.className = "horizontalTree"
+        childrenDiv.className = "verticalTree"
         for (let child of this.children) {
             childrenDiv.appendChild(child.toHtml());
         }
@@ -2119,7 +2119,7 @@ function main() {
                 alert(e.message);
             }
             else {
-                alert("Ill typed Nml code");
+                alert("Syntax error.");
             }
         }
     });
