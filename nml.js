@@ -1835,7 +1835,6 @@ class Define extends Definition {
     }
 }
 
-// val
 class Val extends Definition {
 
     eval(Gamma, Rho) {
@@ -1941,12 +1940,23 @@ class TreeNode {
         text.id = "" + this.id;
         node.appendChild(text);
         node.className = "treeNode";
-        let childrenDiv = document.createElement("div");
-        childrenDiv.className = "verticalTree"
-        for (let child of this.children) {
-            childrenDiv.appendChild(child.toHtml());
+        if (this.children.length > 0) {
+            let childrenDiv = document.createElement("div");
+            childrenDiv.className = "verticalTree";
+            let allNonRecursiveSteps = true;
+            // If all children are non-recursive nodes, make the container a row instead of a column
+            for (let child of this.children) {
+                let childNode = child.toHtml();
+                if (childNode.querySelectorAll(`.verticalTree`).length > 0) {
+                    allNonRecursiveSteps = false;
+                }
+                childrenDiv.appendChild(childNode);
+            }
+            if (allNonRecursiveSteps) {
+                childrenDiv.style.flexDirection = "row";
+            }
+            node.appendChild(childrenDiv);
         }
-        node.appendChild(childrenDiv);
         return node;
     }
 }
@@ -2121,6 +2131,7 @@ function main() {
                 alert(e.message);
             }
             else {
+                console.log(e);
                 alert("Syntax error.");
             }
         }
