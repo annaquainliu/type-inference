@@ -2085,7 +2085,7 @@ function main() {
             nextStep.style.display = "unset";
         }
         else if (currId != undefined && document.getElementById(currId - 1) != null) {
-            document.getElementById(currId - 1).style.color = "black";
+            document.getElementById(currId - 1).style.removeProperty("color");
         }
         fstId = parseInt(steps.children[0].children[0].id);
         lastId = parseInt(steps.children[0].children[2].children[0].id);
@@ -2097,7 +2097,7 @@ function main() {
             return;
         }
         if (document.getElementById(currId - 1) != null) {
-            document.getElementById(currId - 1).style.color = "black";
+            document.getElementById(currId - 1).style.removeProperty("color");
         }
         if (currId == lastId + 1) {
             nextStep.style.display = "none";
@@ -2113,6 +2113,8 @@ function main() {
             let value = parser.getSteps(input.value);
             output.innerText = value["result"].toString();
             steps.replaceChildren(value["steps"].toHtml());
+            walkthrough.style.display = "relative";
+            nextStep.style.display = "none";
         }
         catch(e) {
             if (e instanceof NmlError) {
