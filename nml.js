@@ -598,7 +598,7 @@ class Tyvar extends Type {
     }
 
     static reset() {
-        tCounter = 0;
+        Tyvar.tCounter = 0;
     }
 
     /**
@@ -670,6 +670,10 @@ class Tyvar extends Type {
             return this;
         }
         return type;
+    }
+
+    toString() {
+        return this.typeString
     }
 
 }
@@ -1512,6 +1516,7 @@ class Let extends Expression {
     generalizeNodes;
     cPrime;
     union;
+
     /**
      * @param {Map<String, Object>} info
      */
@@ -1557,8 +1562,12 @@ class Let extends Expression {
     solveRestWithC(c, Gamma, types, names) {
         let theta = c.solve();
         this.constraintNode = new ThetaNode(c, theta);
+
         let domTheta = Object.keys(theta.mapping);
+        this.domTheta = domTheta;
+
         let freetyvars = Environments.freetyvars(Gamma);
+        this.freetyvarsGamma = freetyvars
         let inter = [];
         for (let freetyvar of freetyvars) {
             if (domTheta.includes(freetyvar.typeString)) {
@@ -1603,17 +1612,23 @@ class Let extends Expression {
     }
 
     getSteps() {
+        let CPrimeNode = new CPrime(this.domTheta, this.freetyvarsGamma, this.cPrime)
+        let ftvNode = new FtvarNode(this.initialGammaState, this.union);
+        // Override the value field to contain ftv(C')
+        ftvNode.value = "ftv(C') ∪ " + ftvNode.value;
+
+        // Initialize steps
         let steps = [];
         for (let binding of this.bindings) {
             steps.push(binding[1].getSteps());
         }
         steps.push(this.constraintNode);
         steps = steps.concat(this.tySubstNodes);
-        let ftvNode = new FtvarNode(this.initialGammaState, this.union);
-        ftvNode.value = "ftv(" + this.cPrime.toString() + ") ∪ " + ftvNode.value;
+        steps.push(CPrimeNode);
         steps.push(ftvNode);
         steps = steps.concat(this.generalizeNodes);
         steps.push(this.exp.getSteps());
+
         return new ExpNode(this.conclusion(), steps, this.result);
     }
 }
@@ -2046,16 +2061,37 @@ class GenNode extends StepNode {
 
 class FtvarNode extends StepNode {
 
-    constructor(initialGammaState, ftvs) {
+    static stringifyFtvs(ftvs) {
         let ftvSet = "{";
         for (let ftv of ftvs) {
-            ftvSet += ftv.typeString + ", ";
+            ftvSet += ftv.toString() + ", ";
         }
         if (ftvs.length > 0) {
             ftvSet = ftvSet.substring(0, ftvSet.length - 2);
         }
         ftvSet += "}";
-        super("ftv(" + Definition.GammaChar + initialGammaState + ")", [], "A = " + ftvSet);
+        return ftvSet
+    }
+
+    constructor(initialGammaState, ftvs) {
+        super("ftv(" + Definition.GammaChar + initialGammaState + ")", 
+                [], 
+                "A = " + FtvarNode.stringifyFtvs(ftvs));
+    }
+}
+
+class CPrime extends StepNode {
+
+
+    constructor(domTheta, ftvGamma, CPrime) {
+        let ftvGammaStr = FtvarNode.stringifyFtvs(ftvGamma)
+        console.log(domTheta)
+        let domThetaStr = FtvarNode.stringifyFtvs(domTheta)
+
+        super(`∧{α ~ θα | α ∈ ${domThetaStr} ∩ ${ftvGammaStr}}`,
+             [],
+            `C' = ` + CPrime.toString()
+        )
     }
 }
 
@@ -2087,6 +2123,7 @@ function main() {
         Environments.reset();
         Environments.initEnvs();
         parser.predefs();
+        Tyvar.reset();
     });
     
     let currId, fstId, lastId;
